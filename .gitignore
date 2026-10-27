@@ -1,0 +1,24 @@
+# Dependencies (none expected, but keep stray installs out)
+node_modules/
+
+# Headless training output (a chosen brain is embedded in src/core/pretrained.js instead)
+trained/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Logs
+*.log
+
+# Local preview config for the Claude desktop app
+.claude/launch.json
+
+# Ruflo / claude-flow local state
+.claude-flow/
+.swarm/
+
+# graphify output
+graphify-out/

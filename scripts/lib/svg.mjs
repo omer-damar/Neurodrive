@@ -1,0 +1,165 @@
+// Dependency-free SVG line chart and Markdown report for experiment summaries.
+// Static output (README image), so hover is limited to native <title> tooltips on markers.
+
+// Validated categorical slots 1-3 (light / dark surface); identity follows the condition order.
+const SERIES = [
+  { light: '#2a78d6', dark: '#3987e5' },
+  { light: '#eb6834', dark: '#d95926' },
+  { light: '#1baf7a', dark: '#199e70' },
+];
+const MAX_SERIES = SERIES.length;
+const WIDTH = 760;
+const HEIGHT = 420;
+const PAD = { top: 56, right: 150, bottom: 52, left: 64 };
+const Y_TICKS = 5;
+const BAND_OPACITY = 0.14;
+const MARKER_EVERY = 5; // generations between hover markers
+
+/**
+ * Mean best fitness per generation with a ±1 sd band, one line per condition.
+ * @param {ReturnType<import('./experiment.mjs').summarize>} summary
+ * @param {{ title: string, subtitle: string, valueLabel: (v: number) => string,
+ *           xLabel: string, yLabel: string }} text
+ */
+export function fitnessChartSVG(summary, text) {
+  if (summary.length > MAX_SERIES) throw new Error(`At most ${MAX_SERIES} conditions per chart`);
+  const plotW = WIDTH - PAD.left - PAD.right;
+  const plotH = HEIGHT - PAD.top - PAD.bottom;
+  const gens = summary[0].curve.map((p) => p.generation);
+  const xMin = gens[0];
+  const xMax = gens[gens.length - 1];
+  let yMax = 0;
+  for (const s of summary) for (const p of s.curve) yMax = Math.max(yMax, p.mean + p.sd);
+  yMax = niceCeil(yMax);
+  const x = (g) => PAD.left + ((g - xMin) / Math.max(1, xMax - xMin)) * plotW;
+  const y = (v) => PAD.top + plotH - (Math.max(0, v) / yMax) * plotH;
+
+  const parts = [];
+  parts.push(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${WIDTH} ${HEIGHT}" width="${WIDTH}" height="${HEIGHT}" role="img" aria-labelledby="t d">`);
+  parts.push(`<title id="t">${esc(text.title)}</title><desc id="d">${esc(text.subtitle)}</desc>`);
+  parts.push(`<style>${styleBlock()}</style>`);
+  parts.push(`<rect class="surface" width="${WIDTH}" height="${HEIGHT}" rx="8"/>`);
+  parts.push(`<text class="title" x="${PAD.left}" y="24">${esc(text.title)}</text>`);
+  parts.push(`<text class="muted" x="${PAD.left}" y="42">${esc(text.subtitle)}</text>`);
+
+  // Recessive grid and axes.
+  for (let i = 0; i <= Y_TICKS; i++) {
+    const v = (yMax / Y_TICKS) * i;
+    const yy = y(v);
+    parts.push(`<line class="grid" x1="${PAD.left}" x2="${PAD.left + plotW}" y1="${r(yy)}" y2="${r(yy)}"/>`);
+    parts.push(`<text class="tick" x="${PAD.left - 8}" y="${r(yy + 4)}" text-anchor="end">${fmt(v)}</text>`);
+  }
+  for (const g of xTicks(xMin, xMax)) {
+    parts.push(`<text class="tick" x="${r(x(g))}" y="${PAD.top + plotH + 18}" text-anchor="middle">${g}</text>`);
+  }
+  parts.push(`<line class="axis" x1="${PAD.left}" x2="${PAD.left + plotW}" y1="${PAD.top + plotH}" y2="${PAD.top + plotH}"/>`);
+  parts.push(`<text class="muted" x="${PAD.left + plotW / 2}" y="${HEIGHT - 12}" text-anchor="middle">${esc(text.xLabel)}</text>`);
+  parts.push(`<text class="muted" transform="translate(16 ${PAD.top + plotH / 2}) rotate(-90)" text-anchor="middle">${esc(text.yLabel)}</text>`);
+
+  summary.forEach((s, i) => {
+    const upper = s.curve.map((p) => `${r(x(p.generation))},${r(y(p.mean + p.sd))}`);
+    const lower = s.curve.map((p) => `${r(x(p.generation))},${r(y(p.mean - p.sd))}`).reverse();
+    parts.push(`<polygon class="band s${i}" points="${[...upper, ...lower].join(' ')}"/>`);
+  });
+  summary.forEach((s, i) => {
+    const pts = s.curve.map((p) => `${r(x(p.generation))},${r(y(p.mean))}`).join(' ');
+    parts.push(`<polyline class="line s${i}" points="${pts}"/>`);
+    for (const p of s.curve) {
+      if (p.generation !== xMax && (p.generation - xMin) % MARKER_EVERY !== 0) continue;
+      parts.push(
+        `<circle class="dot s${i}" cx="${r(x(p.generation))}" cy="${r(y(p.mean))}" r="4">` +
+          `<title>${esc(text.valueLabel(s.value))} · ${p.generation}: ${fmt(p.mean)} ± ${fmt(p.sd)}</title></circle>`,
+      );
+    }
+  });
+
+  // Direct labels at the line ends, nudged apart so they never overlap.
+  const ends = summary
+    .map((s, i) => ({ i, label: text.valueLabel(s.value), y: y(s.curve[s.curve.length - 1].mean) }))
+    .sort((a, b) => a.y - b.y);
+  for (let k = 1; k < ends.length; k++) ends[k].y = Math.max(ends[k].y, ends[k - 1].y + 16);
+  for (const e of ends) {
+    parts.push(`<circle class="dot s${e.i}" cx="${PAD.left + plotW + 14}" cy="${r(e.y)}" r="4"/>`);
+    parts.push(`<text class="label" x="${PAD.left + plotW + 24}" y="${r(e.y + 4)}">${esc(e.label)}</text>`);
+  }
+  parts.push('</svg>');
+  return parts.join('\n') + '\n';
+}
+
+/** Markdown summary table (the chart's table view). */
+export function summaryMarkdown(def, summary, valueLabel) {
+  const lines = [
+    `# ${def.title}`,
+    '',
+    `- Pist: \`${def.track}\`, nüfus ${def.population}, ${def.generations} nesil`,
+    `- Değişken: \`${def.variable}\` ∈ {${def.values.join(', ')}}`,
+    `- Tohumlar: ${def.seeds.join(', ')} (koşul başına ${def.seeds.length} koşu)`,
+    '- Değerler: ortalama ± standart sapma (örneklem)',
+    '',
+    '| Koşul | İlk tura kadar nesil | Hiç tur atamayan koşu | En iyi tur (sn) | Son nesil en iyi fitness |',
+    '|---|---|---|---|---|',
+  ];
+  for (const s of summary) {
+    lines.push(
+      `| ${valueLabel(s.value)} | ${ms(s.firstLapGeneration, 1)} | ${s.neverLapped} / ${s.runs} | ` +
+        `${ms(scale(s.bestLapSteps, 1 / 60), 2)} | ${ms(s.finalBest, 3)} |`,
+    );
+  }
+  lines.push('');
+  return lines.join('\n');
+}
+
+function scale(stat, factor) {
+  return stat.mean === null ? stat : { ...stat, mean: stat.mean * factor, sd: stat.sd * factor };
+}
+
+function ms(stat, digits) {
+  return stat.mean === null ? '–' : `${stat.mean.toFixed(digits)} ± ${stat.sd.toFixed(digits)}`;
+}
+
+function styleBlock() {
+  const light = SERIES.map((c, i) => `.s${i}{--c:${c.light}}`).join('');
+  const dark = SERIES.map((c, i) => `.s${i}{--c:${c.dark}}`).join('');
+  return [
+    'svg{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}',
+    '.surface{fill:#fcfcfb}.title{font-size:16px;font-weight:600;fill:#0b0b0b}',
+    '.muted{font-size:12px;fill:#52514e}.tick{font-size:11px;fill:#52514e}.label{font-size:12px;fill:#0b0b0b}',
+    '.grid{stroke:#e6e5e1;stroke-width:1}.axis{stroke:#9b9a95;stroke-width:1}',
+    `.line{fill:none;stroke:var(--c);stroke-width:2;stroke-linejoin:round}.band{fill:var(--c);opacity:${BAND_OPACITY}}`,
+    '.dot{fill:var(--c);stroke:#fcfcfb;stroke-width:2}',
+    light,
+    '@media (prefers-color-scheme:dark){',
+    '.surface{fill:#1a1a19}.title,.label{fill:#f0efec}.muted,.tick{fill:#c3c2b7}',
+    '.grid{stroke:#2e2e2c}.axis{stroke:#5c5b57}.dot{stroke:#1a1a19}',
+    dark,
+    '}',
+  ].join('');
+}
+
+function xTicks(min, max) {
+  const span = max - min;
+  const step = span <= 10 ? 1 : span <= 30 ? 5 : 10;
+  const ticks = [min];
+  for (let g = Math.ceil((min + 1) / step) * step; g < max; g += step) ticks.push(g);
+  if (max !== min) ticks.push(max);
+  return ticks;
+}
+
+function niceCeil(v) {
+  if (v <= 0) return 1;
+  const mag = 10 ** Math.floor(Math.log10(v));
+  for (const m of [1, 2, 2.5, 5, 10]) if (m * mag >= v) return m * mag;
+  return 10 * mag;
+}
+
+function fmt(v) {
+  return Number.isInteger(v) ? String(v) : v.toFixed(2);
+}
+
+function r(v) {
+  return Math.round(v * 10) / 10;
+}
+
+function esc(s) {
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
