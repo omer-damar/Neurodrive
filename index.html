@@ -20,11 +20,22 @@
 <body>
   <header class="topbar">
     <h1 class="brand">NeuroDrive</h1>
-    <div class="view-switch" role="group" data-i18n-aria="view.label">
-      <button type="button" class="view-btn is-active" data-view="2d" aria-pressed="true">2D</button>
-      <button type="button" class="view-btn" data-view="3d" aria-pressed="false" disabled>3D</button>
+    <div class="topbar-controls">
+      <label class="camera-picker" id="camera-picker" hidden>
+        <span class="visually-hidden" data-i18n="camera.label"></span>
+        <select id="camera-select" class="select select-compact">
+          <option value="chase" data-i18n="camera.chase"></option>
+          <option value="top" data-i18n="camera.top"></option>
+          <option value="orbit" data-i18n="camera.orbit"></option>
+        </select>
+      </label>
+      <div class="view-switch" role="group" data-i18n-aria="view.label">
+        <button type="button" class="view-btn is-active" data-view="2d" aria-pressed="true">2D</button>
+        <button type="button" class="view-btn" data-view="3d" aria-pressed="false">3D</button>
+      </div>
     </div>
   </header>
+  <p class="notice" id="view-notice" role="status" hidden></p>
 
   <main class="layout">
     <section class="stage" data-i18n-aria="stage.label">

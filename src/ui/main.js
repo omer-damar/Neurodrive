@@ -14,10 +14,16 @@ import { FixedStepper } from './fixedStep.js';
 import { t, applyTranslations } from './i18n.js';
 
 const MAX_SPEED_MODE = 'max';
+const PREFS_KEY = 'neurodrive.view';
 
 const els = {
   canvas: document.getElementById('canvas-2d'),
   viewport: document.getElementById('viewport-2d'),
+  viewport3d: document.getElementById('viewport-3d'),
+  viewButtons: document.querySelectorAll('.view-btn'),
+  cameraPicker: document.getElementById('camera-picker'),
+  cameraSelect: document.getElementById('camera-select'),
+  notice: document.getElementById('view-notice'),
   trackSelect: document.getElementById('track-select'),
   crowdSelect: document.getElementById('crowd-select'),
   sensorsToggle: document.getElementById('sensors-toggle'),
@@ -35,7 +41,11 @@ const els = {
 
 const renderer = new Renderer2D(els.canvas);
 const stepper = new FixedStepper();
-const view = { showSensors: true, highlightLeader: true, visibleCount: Infinity, dimOthers: false };
+const view = { showSensors: true, highlightLeader: true, visibleCount: Infinity, dimOthers: false, camera: 'chase' };
+
+let activeView = '2d';
+let renderer3d = null; // created on first switch to 3D
+let loading3d = null;
 
 let sim;
 let running = true;
@@ -49,10 +59,100 @@ function newSimulation(track) {
       bestLapSteps = stats.bestLapSteps;
     }
   };
-  sim.onTrackChange = (nextTrack) => renderer.setTrack(nextTrack);
+  sim.onTrackChange = setRendererTracks;
   bestLapSteps = null;
-  renderer.setTrack(track);
+  setRendererTracks(track);
   stepper.reset();
+}
+
+// Both renderers keep the current track so switching views needs no rebuild.
+function setRendererTracks(track) {
+  renderer.setTrack(track);
+  if (renderer3d) renderer3d.setTrack(track);
+}
+
+function activeRenderer() {
+  return activeView === '3d' && renderer3d ? renderer3d : renderer;
+}
+
+async function ensureRenderer3d() {
+  if (renderer3d) return renderer3d;
+  if (!hasWebGL2()) throw new Error('view.noWebgl');
+  loading3d ??= import('./three/renderer3d.js')
+    .then(({ Renderer3D }) => {
+      renderer3d = new Renderer3D(els.viewport3d, { capacity: sim.cars.length });
+      renderer3d.setTrack(sim.track);
+      // Models stream in afterwards; box cars are shown meanwhile and kept if loading fails.
+      renderer3d.loadModels().catch((error) => console.warn('3D models unavailable', error));
+      return renderer3d;
+    })
+    .catch((error) => {
+      loading3d = null; // allow a retry, e.g. once the network is back
+      console.error(error);
+      throw new Error('view.load3dFailed');
+    });
+  return loading3d;
+}
+
+function hasWebGL2() {
+  try {
+    return Boolean(document.createElement('canvas').getContext('webgl2'));
+  } catch {
+    return false;
+  }
+}
+
+async function setView(name) {
+  if (name === '3d') {
+    showNotice('view.loading3d');
+    for (const btn of els.viewButtons) btn.disabled = true;
+    try {
+      await ensureRenderer3d();
+      hideNotice();
+    } catch (error) {
+      showNotice(error.message);
+      name = '2d';
+    } finally {
+      for (const btn of els.viewButtons) btn.disabled = false;
+    }
+  }
+  activeView = name;
+  els.viewport.hidden = name !== '2d';
+  els.viewport3d.hidden = name !== '3d';
+  els.cameraPicker.hidden = name !== '3d';
+  for (const btn of els.viewButtons) {
+    const active = btn.dataset.view === name;
+    btn.classList.toggle('is-active', active);
+    btn.setAttribute('aria-pressed', String(active));
+  }
+  activeRenderer().resize();
+  savePrefs();
+}
+
+function showNotice(key) {
+  els.notice.textContent = t(key);
+  els.notice.hidden = false;
+}
+
+function hideNotice() {
+  els.notice.hidden = true;
+}
+
+// View and camera choice survive reloads; storage may be unavailable (private mode), so best effort.
+function savePrefs() {
+  try {
+    localStorage.setItem(PREFS_KEY, JSON.stringify({ view: activeView, camera: view.camera }));
+  } catch {
+    /* ignore */
+  }
+}
+
+function loadPrefs() {
+  try {
+    return JSON.parse(localStorage.getItem(PREFS_KEY)) ?? {};
+  } catch {
+    return {};
+  }
 }
 
 function runSteps(frameMs) {
@@ -123,7 +223,7 @@ let lastStats = 0;
 function frame(now) {
   runSteps(now - lastTime);
   lastTime = now;
-  renderer.render(sim, view);
+  activeRenderer().render(sim, view);
   if (now - lastStats >= 1000 / STATS_UPDATE_HZ) {
     updateStats();
     lastStats = now;
@@ -161,7 +261,18 @@ els.sensorsToggle.addEventListener('change', () => {
   view.showSensors = els.sensorsToggle.checked;
 });
 
+for (const btn of els.viewButtons) {
+  btn.addEventListener('click', () => setView(btn.dataset.view));
+}
+
+els.cameraSelect.addEventListener('change', () => {
+  view.camera = els.cameraSelect.value;
+  els.cameraSelect.blur();
+  savePrefs();
+});
+
 new ResizeObserver(() => renderer.resize()).observe(els.viewport);
+new ResizeObserver(() => renderer3d?.resize()).observe(els.viewport3d);
 
 applyTranslations();
 buildSpeedButtons();
@@ -169,4 +280,8 @@ els.trackSelect.value = DEFAULT_TRACK;
 newSimulation(Track.preset(DEFAULT_TRACK));
 setSpeed(1);
 setRunning(true);
+const prefs = loadPrefs();
+if (['chase', 'top', 'orbit'].includes(prefs.camera)) view.camera = prefs.camera;
+els.cameraSelect.value = view.camera;
+if (prefs.view === '3d') setView('3d');
 requestAnimationFrame(frame);
