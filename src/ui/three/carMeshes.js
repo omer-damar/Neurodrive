@@ -129,10 +129,7 @@ export class CarMeshes {
   #placeLeader(car, typeIndex) {
     let entry = this.leaders.get(typeIndex);
     if (!entry) {
-      const template = this.types[typeIndex].template;
-      const root = template.root.clone(true);
-      const wheels = template.frontWheelNames.map((name) => root.getObjectByName(name)).filter(Boolean);
-      entry = { root, wheels, baseY: wheels.map((w) => w.rotation.y) };
+      entry = createLeader(this.types[typeIndex].template);
       this.leaders.set(typeIndex, entry);
     }
     if (this.leaderClone !== entry.root) {
@@ -145,10 +142,36 @@ export class CarMeshes {
     this.leaderPivot.rotation.y = toRotationY(car.angle);
     // Lean away from the turn, more at speed (roll about the forward X axis).
     this.leaderRoll.rotation.x = -car.steer * (car.speed / MAX_SPEED) * MAX_ROLL;
-    entry.wheels.forEach((wheel, k) => {
-      wheel.rotation.y = entry.baseY[k] - car.steer * WHEEL_STEER_ANGLE;
+    entry.pivots.forEach((pivot, k) => {
+      pivot.quaternion.setFromAxisAngle(entry.axes[k], -car.steer * WHEEL_STEER_ANGLE);
     });
   }
+}
+
+// Full clone of a car type for the leader. Each front wheel is moved into a pivot at the wheel's
+// centre, and steering turns the pivot about the car's up axis in the parent's space. This works
+// whether a model keeps its wheels in tilted frames (RX-7) or bakes them around the car origin (Charger).
+function createLeader(template) {
+  const root = template.root.clone(true);
+  root.updateMatrixWorld(true);
+  const wheels = template.frontWheelNames.map((name) => root.getObjectByName(name)).filter(Boolean);
+  const parentQuaternion = new THREE.Quaternion();
+  const box = new THREE.Box3();
+  const pivots = [];
+  const axes = [];
+  for (const wheel of wheels) {
+    const parent = wheel.parent;
+    const centre = parent.worldToLocal(box.setFromObject(wheel).getCenter(new THREE.Vector3()));
+    const pivot = new THREE.Group();
+    pivot.position.copy(centre);
+    parent.add(pivot);
+    pivot.add(wheel);
+    wheel.position.sub(centre);
+    parent.getWorldQuaternion(parentQuaternion);
+    axes.push(new THREE.Vector3(0, 1, 0).applyQuaternion(parentQuaternion.invert()).normalize());
+    pivots.push(pivot);
+  }
+  return { root, pivots, axes };
 }
 
 // Bakes every mesh of the template into its own InstancedMesh (geometry in template space).
