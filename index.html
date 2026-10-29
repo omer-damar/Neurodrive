@@ -33,6 +33,10 @@
         <button type="button" class="view-btn is-active" data-view="2d" aria-pressed="true">2D</button>
         <button type="button" class="view-btn" data-view="3d" aria-pressed="false">3D</button>
       </div>
+      <div class="view-switch" role="group" data-i18n-aria="lang.label">
+        <button type="button" class="view-btn lang-btn" data-lang="tr" aria-pressed="false" lang="tr">TR</button>
+        <button type="button" class="view-btn lang-btn" data-lang="en" aria-pressed="false" lang="en">EN</button>
+      </div>
     </div>
   </header>
   <p class="notice" id="view-notice" role="status" hidden></p>
@@ -79,6 +83,25 @@
       </section>
 
       <section class="panel-section">
+        <h2 data-i18n="network.heading"></h2>
+        <canvas id="network-canvas" class="network-canvas" role="img" data-i18n-aria="network.label"></canvas>
+        <p class="muted hint" data-i18n="network.legend"></p>
+      </section>
+
+      <section class="panel-section">
+        <h2 data-i18n="chart.heading"></h2>
+        <ul class="legend">
+          <li><span class="swatch swatch-best"></span><span data-i18n="chart.best"></span></li>
+          <li><span class="swatch swatch-avg"></span><span data-i18n="chart.avg"></span></li>
+        </ul>
+        <div class="chart">
+          <canvas id="chart-canvas" class="chart-canvas" role="img" data-i18n-aria="chart.label"></canvas>
+          <div id="chart-tooltip" class="chart-tip" hidden></div>
+          <p id="chart-empty" class="chart-empty muted" data-i18n="chart.empty"></p>
+        </div>
+      </section>
+
+      <section class="panel-section">
         <h2 data-i18n="display.heading"></h2>
         <label class="field">
           <span data-i18n="display.crowd"></span>
@@ -101,6 +124,20 @@
           <option value="classic" data-i18n="track.classic"></option>
           <option value="technical" data-i18n="track.technical"></option>
         </select>
+      </section>
+
+      <section class="panel-section">
+        <h2 data-i18n="settings.heading"></h2>
+        <div id="settings-fields"></div>
+        <label class="check">
+          <input type="checkbox" id="shadows-toggle" checked>
+          <span data-i18n="settings.shadows"></span>
+        </label>
+        <div class="button-row settings-actions">
+          <button type="button" id="btn-apply-settings" class="btn btn-primary" data-i18n="settings.apply"></button>
+        </div>
+        <p id="settings-pending" class="pending" data-i18n="settings.pending" hidden></p>
+        <p class="muted hint" data-i18n="settings.hint"></p>
       </section>
     </aside>
   </main>

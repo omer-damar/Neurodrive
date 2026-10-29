@@ -1,9 +1,11 @@
-// UI strings. Turkish only for now; English and a language switch arrive in Phase 5.
+// UI strings in Turkish (default) and English. Pure apart from applyTranslations(), which takes the
+// document; the chosen locale is stored by main.js.
 
 const MESSAGES = {
   tr: {
     'stage.label': 'Simülasyon',
     'panel.label': 'Kontrol paneli',
+    'lang.label': 'Dil',
     'view.label': 'Görünüm',
     'view.loading3d': '3D görünüm yükleniyor…',
     'view.noWebgl': 'Bu tarayıcıda WebGL yok; 2D görünümde devam ediliyor.',
@@ -29,6 +31,20 @@ const MESSAGES = {
     'controls.speed': 'Hız',
     'controls.max': 'Maks',
     'controls.help': 'Boşluk: başlat/duraklat. Pist değiştirmek eğitilmiş beyinleri korur.',
+    'network.heading': 'Sinir ağı',
+    'network.label': 'Liderin sinir ağı: girdiler, gizli katman ve çıktılar',
+    'network.sensor': 'S{n}',
+    'network.speed': 'Hız',
+    'network.steer': 'Direksiyon',
+    'network.throttle': 'Gaz',
+    'network.legend': 'Mavi pozitif, turuncu negatif. Çizgi kalınlığı ağırlığın büyüklüğü, düğüm rengi anlık aktivasyon.',
+    'chart.heading': 'Gelişim',
+    'chart.label': 'Nesil başına en iyi ve ortalama fitness',
+    'chart.best': 'En iyi',
+    'chart.avg': 'Ortalama',
+    'chart.generation': 'Nesil',
+    'chart.tooltip': 'Nesil {generation}',
+    'chart.empty': 'İlk nesil bitince grafik çizilir.',
     'display.heading': 'Görüntü',
     'display.crowd': 'Kalabalık',
     'display.crowd.all': 'Tüm arabalar',
@@ -39,18 +55,111 @@ const MESSAGES = {
     'track.oval': 'Oval (kolay)',
     'track.classic': 'Klasik (orta)',
     'track.technical': 'Teknik (zor)',
+    'settings.heading': 'Ayarlar',
+    'settings.populationSize': 'Nüfus',
+    'settings.mutationRate': 'Mutasyon oranı',
+    'settings.hiddenNeurons': 'Gizli nöron',
+    'settings.rayCount': 'Işın sayısı',
+    'settings.shadows': '3D gölgeler',
+    'settings.apply': 'Yeni eğitim başlat',
+    'settings.hint': 'Eğitim ayarları "Yeni eğitim başlat" ile uygulanır; gölgeler hemen değişir.',
+    'settings.pending': 'Uygulanmamış değişiklik var.',
     'error.TOO_FEW_POINTS': 'Pist için en az 4 nokta gerekli.',
     'error.SHARP_TURN': 'Viraj çok keskin.',
     'error.SECTIONS_TOO_CLOSE': 'Pistin iki bölümü birbirine çok yakın.',
   },
+  en: {
+    'stage.label': 'Simulation',
+    'panel.label': 'Control panel',
+    'lang.label': 'Language',
+    'view.label': 'View',
+    'view.loading3d': 'Loading the 3D view…',
+    'view.noWebgl': 'This browser has no WebGL; continuing in the 2D view.',
+    'view.load3dFailed': 'The 3D view could not be loaded (an internet connection may be needed); continuing in 2D.',
+    'camera.label': 'Camera',
+    'camera.chase': 'Chase camera',
+    'camera.top': 'Top-down',
+    'camera.orbit': 'Free',
+    'status.heading': 'Status',
+    'status.generation': 'Generation',
+    'status.alive': 'Cars running',
+    'status.finished': 'Cars finished',
+    'status.best': 'Best fitness',
+    'status.bestLap': 'Best lap time',
+    'status.last': 'Last generation (best / avg)',
+    'status.lastValue': '{best} / {avg}',
+    'unit.seconds': '{value} s',
+    'controls.heading': 'Controls',
+    'controls.play': 'Start',
+    'controls.pause': 'Pause',
+    'controls.next': 'Next generation',
+    'controls.reset': 'Reset',
+    'controls.speed': 'Speed',
+    'controls.max': 'Max',
+    'controls.help': 'Space: start/pause. Changing the track keeps the trained brains.',
+    'network.heading': 'Neural network',
+    'network.label': "The leader's neural network: inputs, hidden layer and outputs",
+    'network.sensor': 'S{n}',
+    'network.speed': 'Speed',
+    'network.steer': 'Steer',
+    'network.throttle': 'Throttle',
+    'network.legend': 'Blue is positive, orange negative. Line width is the weight size, node colour the current activation.',
+    'chart.heading': 'Progress',
+    'chart.label': 'Best and average fitness per generation',
+    'chart.best': 'Best',
+    'chart.avg': 'Average',
+    'chart.generation': 'Generation',
+    'chart.tooltip': 'Generation {generation}',
+    'chart.empty': 'The chart appears after the first generation.',
+    'display.heading': 'Display',
+    'display.crowd': 'Crowd',
+    'display.crowd.all': 'All cars',
+    'display.crowd.top10': 'Only the best 10',
+    'display.crowd.dim': 'Dim all but the leader',
+    'display.sensors': "Show the leader's sensors",
+    'track.heading': 'Track',
+    'track.oval': 'Oval (easy)',
+    'track.classic': 'Classic (medium)',
+    'track.technical': 'Technical (hard)',
+    'settings.heading': 'Settings',
+    'settings.populationSize': 'Population',
+    'settings.mutationRate': 'Mutation rate',
+    'settings.hiddenNeurons': 'Hidden neurons',
+    'settings.rayCount': 'Ray count',
+    'settings.shadows': '3D shadows',
+    'settings.apply': 'Start new training',
+    'settings.hint': 'Training settings apply with "Start new training"; shadows change at once.',
+    'settings.pending': 'There are unapplied changes.',
+    'error.TOO_FEW_POINTS': 'A track needs at least 4 points.',
+    'error.SHARP_TURN': 'A turn is too sharp.',
+    'error.SECTIONS_TOO_CLOSE': 'Two parts of the track are too close.',
+  },
 };
 
-let locale = 'tr';
+export const LOCALES = Object.freeze(Object.keys(MESSAGES));
+export const DEFAULT_LOCALE = 'tr';
+
+let locale = DEFAULT_LOCALE;
+
+export function getLocale() {
+  return locale;
+}
+
+/** Switches the language; unknown locales are ignored. Returns the active locale. */
+export function setLocale(next) {
+  if (LOCALES.includes(next)) locale = next;
+  return locale;
+}
 
 /** Looks up a message and fills {name} placeholders from params. Unknown keys return the key. */
 export function t(key, params = {}) {
-  const template = MESSAGES[locale][key] ?? key;
+  const template = MESSAGES[locale][key] ?? MESSAGES[DEFAULT_LOCALE][key] ?? key;
   return template.replace(/\{(\w+)\}/g, (match, name) => (name in params ? String(params[name]) : match));
+}
+
+/** Message keys of one locale (for tests: every locale must define the same keys). */
+export function messageKeys(name) {
+  return Object.keys(MESSAGES[name] ?? {});
 }
 
 /** Fills elements marked with data-i18n (text) and data-i18n-aria (aria-label). */

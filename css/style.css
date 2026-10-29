@@ -6,6 +6,8 @@
   --text: #e6e9ee;
   --muted: #8a94a3;
   --accent: #4fd1a5;
+  --series-best: #3987e5; /* validated categorical palette, dark steps (chart.js mirrors these) */
+  --series-avg: #d95926;
   --radius: 10px;
   --gap: 16px;
   --font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
@@ -267,9 +269,140 @@ body {
   font: inherit;
 }
 
+/* Phase 5: network view, fitness chart, settings */
+.network-canvas {
+  display: block;
+  width: 100%;
+  height: 190px;
+}
+
+.legend {
+  display: flex;
+  gap: 14px;
+  margin: 0 0 6px;
+  padding: 0;
+  list-style: none;
+  font-size: 0.85rem;
+  color: var(--text);
+}
+
+.legend li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.swatch {
+  display: inline-block;
+  width: 12px;
+  height: 3px;
+  border-radius: 2px;
+}
+
+.swatch-best {
+  background: var(--series-best);
+}
+
+.swatch-avg {
+  background: var(--series-avg);
+}
+
+.chart {
+  position: relative;
+}
+
+.chart-canvas {
+  display: block;
+  width: 100%;
+  height: 150px;
+  touch-action: pan-y;
+}
+
+.chart-empty {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+.chart-empty[hidden],
+.chart-tip[hidden] {
+  display: none;
+}
+
+.chart-tip {
+  position: absolute;
+  top: 4px;
+  min-width: 130px;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 0.8rem;
+  pointer-events: none;
+}
+
+.chart-tip-title {
+  margin-bottom: 2px;
+  color: var(--muted);
+}
+
+.chart-tip-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.chart-tip-value {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+}
+
+.setting-row {
+  display: flex;
+  justify-content: space-between;
+}
+
+.setting-row output {
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.field input[type="range"] {
+  width: 100%;
+  accent-color: var(--accent);
+}
+
+.settings-actions {
+  margin: 10px 0 0;
+}
+
+.pending {
+  margin: 6px 0 0;
+  color: #ffd98a;
+  font-size: 0.85rem;
+}
+
+.lang-btn {
+  padding: 6px 10px;
+}
+
 @media (max-width: 800px) {
+  /* Stacked layout: the page scrolls instead of squeezing the panel into the leftover height. */
+  html,
+  body {
+    height: auto;
+  }
+
   .layout {
     grid-template-columns: 1fr;
     grid-template-rows: 60vh auto;
+  }
+
+  .panel {
+    overflow-y: visible;
   }
 }

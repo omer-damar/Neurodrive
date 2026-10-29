@@ -64,6 +64,15 @@ export const STATS_UPDATE_HZ = 10;
 export const MAX_FRAME_DT_MS = 100; // longer frame gaps (tab switch, breakpoint) are clamped
 export const MAX_STEPS_PER_FRAME = 120; // fixed-step catch-up limit; leftover time is dropped
 
+// --- Settings panel (Phase 5): [min, max, step] for each training setting ---
+export const SETTINGS_LIMITS = Object.freeze({
+  populationSize: Object.freeze([20, 300, 10]),
+  mutationRate: Object.freeze([0.01, 0.5, 0.01]),
+  hiddenNeurons: Object.freeze([4, 16, 1]),
+  rayCount: Object.freeze([3, 9, 1]),
+});
+export const MAX_POPULATION = SETTINGS_LIMITS.populationSize[1]; // 3D instance buffers are sized for this
+
 // --- 3D view (4.1, 4.10) ---
 export const SCALE = 0.05; // world unit -> metres in three.js (1 unit = 5 cm)
 export const BARRIER_HEIGHT = 0.6; // metres

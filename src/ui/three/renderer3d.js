@@ -118,7 +118,7 @@ export class Renderer3D {
   /**
    * @param {{ track: object, cars: object[], leader: object | null }} scene
    * @param {{ camera?: string, showSensors?: boolean, highlightLeader?: boolean,
-   *           visibleCount?: number, dimOthers?: boolean }} [view]
+   *           visibleCount?: number, dimOthers?: boolean, shadows?: boolean }} [view]
    */
   render(scene, view = {}) {
     const now = performance.now();
@@ -126,8 +126,11 @@ export class Renderer3D {
     this.lastTime = now;
 
     if (view.camera) this.rig.setMode(view.camera);
+    // Turning the only shadow caster off skips the shadow pass; three recompiles the materials itself.
+    this.sun.castShadow = view.shadows ?? true;
     this.cars.update(scene, view);
     const leader = view.highlightLeader === false ? null : scene.leader;
+    if (leader && leader.sensors.length !== this.sensors.rayCount) this.#rebuildSensors(leader.sensors.length);
     this.sensors.update(leader, view.showSensors ?? true);
     this.rig.update(scene.leader, dt);
 
@@ -136,6 +139,14 @@ export class Renderer3D {
     this.sun.position.set(focus.x + SUN.x * 20, SUN.y * 20, focus.z + SUN.z * 20);
 
     this.renderer.render(this.scene, this.rig.camera);
+  }
+
+  // A new training may use another ray count (settings panel); the line buffers are sized per count.
+  #rebuildSensors(rayCount) {
+    this.scene.remove(this.sensors.group);
+    this.sensors.dispose();
+    this.sensors = new SensorLines(rayCount);
+    this.scene.add(this.sensors.group);
   }
 
   resize() {

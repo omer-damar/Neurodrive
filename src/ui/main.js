@@ -6,21 +6,27 @@ import {
   STEPS_PER_SECOND,
   SPEED_MULTIPLIERS,
   MAX_MODE_FRAME_BUDGET_MS,
+  MAX_POPULATION,
+  SETTINGS_LIMITS,
 } from '../core/config.js';
 import { Track } from '../core/track.js';
 import { Simulation } from '../core/simulation.js';
 import { Renderer2D } from './renderer2d.js';
 import { FixedStepper } from './fixedStep.js';
-import { t, applyTranslations } from './i18n.js';
+import { t, applyTranslations, setLocale, getLocale, DEFAULT_LOCALE } from './i18n.js';
+import { NetworkView } from './networkView.js';
+import { FitnessChart } from './chart.js';
+import { SETTING_NAMES, defaultSettings, clampSetting, formatSetting, sameSettings } from './settings.js';
 
 const MAX_SPEED_MODE = 'max';
 const PREFS_KEY = 'neurodrive.view';
+const LANG_KEY = 'neurodrive.lang';
 
 const els = {
   canvas: document.getElementById('canvas-2d'),
   viewport: document.getElementById('viewport-2d'),
   viewport3d: document.getElementById('viewport-3d'),
-  viewButtons: document.querySelectorAll('.view-btn'),
+  viewButtons: document.querySelectorAll('.view-btn[data-view]'), // the language buttons share the style
   cameraPicker: document.getElementById('camera-picker'),
   cameraSelect: document.getElementById('camera-select'),
   notice: document.getElementById('view-notice'),
@@ -37,11 +43,29 @@ const els = {
   finished: document.getElementById('stat-finished'),
   bestLap: document.getElementById('stat-lap'),
   lastGen: document.getElementById('stat-last'),
+  langButtons: document.querySelectorAll('.lang-btn'),
+  networkCanvas: document.getElementById('network-canvas'),
+  chartCanvas: document.getElementById('chart-canvas'),
+  chartTooltip: document.getElementById('chart-tooltip'),
+  chartEmpty: document.getElementById('chart-empty'),
+  settingsFields: document.getElementById('settings-fields'),
+  shadowsToggle: document.getElementById('shadows-toggle'),
+  applySettings: document.getElementById('btn-apply-settings'),
+  settingsPending: document.getElementById('settings-pending'),
 };
 
 const renderer = new Renderer2D(els.canvas);
 const stepper = new FixedStepper();
-const view = { showSensors: true, highlightLeader: true, visibleCount: Infinity, dimOthers: false, camera: 'chase' };
+const networkView = new NetworkView(els.networkCanvas);
+const chart = new FitnessChart(els.chartCanvas, els.chartTooltip, els.chartEmpty);
+const view = {
+  showSensors: true,
+  highlightLeader: true,
+  visibleCount: Infinity,
+  dimOthers: false,
+  camera: 'chase',
+  shadows: true,
+};
 
 let activeView = '2d';
 let renderer3d = null; // created on first switch to 3D
@@ -51,9 +75,14 @@ let sim;
 let running = true;
 let speed = 1; // a multiplier from SPEED_MULTIPLIERS, or MAX_SPEED_MODE
 let bestLapSteps = null; // all-time
+let noticeKey = null;
+let chartLength = -1; // history length the chart last drew
+// Training settings: `applied` runs now; `draft` is what the panel shows until "Start new training".
+let appliedSettings = defaultSettings();
+let draftSettings = { ...appliedSettings };
 
 function newSimulation(track) {
-  sim = new Simulation(track);
+  sim = new Simulation(track, appliedSettings);
   sim.onGeneration = (stats) => {
     if (stats.bestLapSteps !== null && (bestLapSteps === null || stats.bestLapSteps < bestLapSteps)) {
       bestLapSteps = stats.bestLapSteps;
@@ -61,6 +90,7 @@ function newSimulation(track) {
   };
   sim.onTrackChange = setRendererTracks;
   bestLapSteps = null;
+  chartLength = -1;
   setRendererTracks(track);
   stepper.reset();
 }
@@ -80,7 +110,8 @@ async function ensureRenderer3d() {
   if (!hasWebGL2()) throw new Error('view.noWebgl');
   loading3d ??= import('./three/renderer3d.js')
     .then(({ Renderer3D }) => {
-      renderer3d = new Renderer3D(els.viewport3d, { capacity: sim.cars.length });
+      // Sized for the largest population the settings allow, so a new training never rebuilds it.
+      renderer3d = new Renderer3D(els.viewport3d, { capacity: MAX_POPULATION });
       renderer3d.setTrack(sim.track);
       // Models stream in afterwards; box cars are shown meanwhile and kept if loading fails.
       renderer3d.loadModels().catch((error) => console.warn('3D models unavailable', error));
@@ -130,18 +161,20 @@ async function setView(name) {
 }
 
 function showNotice(key) {
+  noticeKey = key;
   els.notice.textContent = t(key);
   els.notice.hidden = false;
 }
 
 function hideNotice() {
+  noticeKey = null;
   els.notice.hidden = true;
 }
 
 // View and camera choice survive reloads; storage may be unavailable (private mode), so best effort.
 function savePrefs() {
   try {
-    localStorage.setItem(PREFS_KEY, JSON.stringify({ view: activeView, camera: view.camera }));
+    localStorage.setItem(PREFS_KEY, JSON.stringify({ view: activeView, camera: view.camera, shadows: view.shadows }));
   } catch {
     /* ignore */
   }
@@ -153,6 +186,78 @@ function loadPrefs() {
   } catch {
     return {};
   }
+}
+
+function loadLocale() {
+  try {
+    return localStorage.getItem(LANG_KEY) ?? DEFAULT_LOCALE;
+  } catch {
+    return DEFAULT_LOCALE;
+  }
+}
+
+// Re-renders everything that is not a data-i18n element; called on start and on language change.
+function setLanguage(name) {
+  const active = setLocale(name);
+  try {
+    localStorage.setItem(LANG_KEY, active);
+  } catch {
+    /* ignore */
+  }
+  applyTranslations();
+  for (const btn of els.langButtons) {
+    const on = btn.dataset.lang === active;
+    btn.classList.toggle('is-active', on);
+    btn.setAttribute('aria-pressed', String(on));
+  }
+  updatePlayLabel();
+  for (const btn of els.speeds.querySelectorAll('button')) {
+    if (btn.dataset.speed === MAX_SPEED_MODE) btn.textContent = t('controls.max');
+  }
+  if (noticeKey) els.notice.textContent = t(noticeKey);
+  updateStats();
+  networkView.render(leaderBrain());
+  chart.setHistory(sim.history);
+}
+
+function leaderBrain() {
+  const index = sim.cars.indexOf(sim.leader);
+  return index >= 0 ? sim.brains[index] : null;
+}
+
+// One range input per training setting; limits come from config.js.
+function buildSettings() {
+  for (const name of SETTING_NAMES) {
+    const [min, max, step] = SETTINGS_LIMITS[name];
+    const field = document.createElement('label');
+    field.className = 'field';
+    const row = document.createElement('span');
+    row.className = 'setting-row';
+    const label = document.createElement('span');
+    label.dataset.i18n = `settings.${name}`;
+    const output = document.createElement('output');
+    output.textContent = formatSetting(name, appliedSettings[name]);
+    row.append(label, output);
+    const input = document.createElement('input');
+    input.type = 'range';
+    input.min = String(min);
+    input.max = String(max);
+    input.step = String(step);
+    input.value = String(appliedSettings[name]);
+    input.addEventListener('input', () => {
+      draftSettings[name] = clampSetting(name, input.value);
+      output.textContent = formatSetting(name, draftSettings[name]);
+      els.settingsPending.hidden = sameSettings(draftSettings, appliedSettings);
+    });
+    field.append(row, input);
+    els.settingsFields.append(field);
+  }
+}
+
+function applySettings() {
+  appliedSettings = { ...draftSettings };
+  els.settingsPending.hidden = true;
+  newSimulation(Track.preset(els.trackSelect.value));
 }
 
 function runSteps(frameMs) {
@@ -190,9 +295,13 @@ function updateStats() {
 
 function setRunning(value) {
   running = value;
+  updatePlayLabel();
+  stepper.reset();
+}
+
+function updatePlayLabel() {
   els.playPause.textContent = t(running ? 'controls.pause' : 'controls.play');
   els.playPause.setAttribute('aria-pressed', String(running));
-  stepper.reset();
 }
 
 function setSpeed(value) {
@@ -226,6 +335,11 @@ function frame(now) {
   activeRenderer().render(sim, view);
   if (now - lastStats >= 1000 / STATS_UPDATE_HZ) {
     updateStats();
+    networkView.render(leaderBrain());
+    if (sim.history.length !== chartLength) {
+      chart.setHistory(sim.history);
+      chartLength = sim.history.length;
+    }
     lastStats = now;
   }
   requestAnimationFrame(frame);
@@ -265,6 +379,17 @@ for (const btn of els.viewButtons) {
   btn.addEventListener('click', () => setView(btn.dataset.view));
 }
 
+for (const btn of els.langButtons) {
+  btn.addEventListener('click', () => setLanguage(btn.dataset.lang));
+}
+
+els.shadowsToggle.addEventListener('change', () => {
+  view.shadows = els.shadowsToggle.checked;
+  savePrefs();
+});
+
+els.applySettings.addEventListener('click', applySettings);
+
 els.cameraSelect.addEventListener('change', () => {
   view.camera = els.cameraSelect.value;
   els.cameraSelect.blur();
@@ -273,7 +398,11 @@ els.cameraSelect.addEventListener('change', () => {
 
 new ResizeObserver(() => renderer.resize()).observe(els.viewport);
 new ResizeObserver(() => renderer3d?.resize()).observe(els.viewport3d);
+new ResizeObserver(() => networkView.resize()).observe(els.networkCanvas);
+new ResizeObserver(() => chart.resize()).observe(els.chartCanvas);
 
+buildSettings();
+setLocale(loadLocale());
 applyTranslations();
 buildSpeedButtons();
 els.trackSelect.value = DEFAULT_TRACK;
@@ -283,5 +412,8 @@ setRunning(true);
 const prefs = loadPrefs();
 if (['chase', 'top', 'orbit'].includes(prefs.camera)) view.camera = prefs.camera;
 els.cameraSelect.value = view.camera;
+if (typeof prefs.shadows === 'boolean') view.shadows = prefs.shadows;
+els.shadowsToggle.checked = view.shadows;
+setLanguage(getLocale()); // fills the language buttons and the dynamic texts
 if (prefs.view === '3d') setView('3d');
 requestAnimationFrame(frame);
