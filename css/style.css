@@ -423,6 +423,135 @@ body {
   padding: 6px 10px;
 }
 
+/* Race mode HUD, drawn over either viewport. Chip borders match the 2D car colours. */
+.race-hud {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.race-hud > * {
+  pointer-events: auto;
+}
+
+.race-bar {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  right: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.race-bar > * {
+  pointer-events: auto;
+}
+
+.race-chip {
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: rgba(15, 18, 22, 0.82);
+  font-variant-numeric: tabular-nums;
+}
+
+.race-chip-player {
+  border-color: #ffd166;
+}
+
+.race-chip-ai {
+  border-color: var(--accent);
+}
+
+.race-time {
+  min-width: 80px;
+  text-align: center;
+}
+
+.race-exit {
+  margin-left: auto;
+  background: rgba(31, 37, 45, 0.9);
+}
+
+.race-countdown {
+  position: absolute;
+  top: 38%;
+  left: 50%;
+  margin: 0;
+  transform: translate(-50%, -50%);
+  color: #fff;
+  font-size: clamp(3rem, 12vw, 7rem);
+  font-weight: 800;
+  line-height: 1;
+  text-shadow: 0 4px 18px rgba(0, 0, 0, 0.7);
+  pointer-events: none;
+}
+
+.race-result {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: min(340px, calc(100% - 32px));
+  padding: 18px 20px 8px;
+  transform: translate(-50%, -50%);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: rgba(23, 27, 33, 0.96);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+}
+
+.race-result h2 {
+  margin: 0 0 10px;
+  color: #ffd166;
+  font-size: 1.4rem;
+}
+
+.race-result h2.race-lost {
+  color: var(--accent);
+}
+
+.race-result .stats {
+  margin-bottom: 14px;
+}
+
+/* Touch controls: only on coarse pointers (phones, tablets); keyboards use arrows or WASD. */
+.race-touch {
+  display: none;
+}
+
+@media (pointer: coarse) {
+  .race-touch {
+    position: absolute;
+    left: 12px;
+    right: 12px;
+    bottom: 12px;
+    display: flex;
+    justify-content: space-between;
+    pointer-events: none;
+  }
+}
+
+.race-touch-group {
+  display: flex;
+  gap: 10px;
+  pointer-events: auto;
+}
+
+.race-touch-btn {
+  width: 64px;
+  height: 64px;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: rgba(31, 37, 45, 0.75);
+  color: var(--text);
+  font-size: 1.4rem;
+  touch-action: none;
+  user-select: none;
+}
+
 @media (max-width: 800px) {
   /* Stacked layout: the page scrolls instead of squeezing the panel into the leftover height. */
   html,

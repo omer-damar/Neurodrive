@@ -9,6 +9,7 @@ import { CameraRig } from './cameras.js';
 import { loadCarTemplates, loadDecorTemplates } from './modelLibrary.js';
 import { planDecor } from './decorLayout.js';
 import { toWorld3 } from './geometry.js';
+import { carPose } from '../interpolate.js';
 
 const SKY_COLOR = 0x9cc7e8;
 const FOG_NEAR_FACTOR = 1.5; // relative to track size
@@ -64,6 +65,7 @@ export class Renderer3D {
     this.decorGroup.name = 'decor';
     this.scene.add(this.decorGroup);
     this.lastTime = performance.now();
+    this.leaderPose = { x: 0, y: 0, angle: 0 };
     this.resize();
   }
 
@@ -118,7 +120,8 @@ export class Renderer3D {
   /**
    * @param {{ track: object, cars: object[], leader: object | null }} scene
    * @param {{ camera?: string, showSensors?: boolean, highlightLeader?: boolean,
-   *           visibleCount?: number, dimOthers?: boolean, shadows?: boolean }} [view]
+   *           visibleCount?: number, dimOthers?: boolean, shadows?: boolean, alpha?: number }} [view]
+   *   alpha: how far the frame is between the previous and the current physics step (0..1)
    */
   render(scene, view = {}) {
     const now = performance.now();
@@ -130,9 +133,10 @@ export class Renderer3D {
     this.sun.castShadow = view.shadows ?? true;
     this.cars.update(scene, view);
     const leader = view.highlightLeader === false ? null : scene.leader;
+    const pose = scene.leader ? carPose(scene.leader, view.alpha ?? 1, this.leaderPose) : null;
     if (leader && leader.sensors.length !== this.sensors.rayCount) this.#rebuildSensors(leader.sensors.length);
-    this.sensors.update(leader, view.showSensors ?? true);
-    this.rig.update(scene.leader, dt);
+    this.sensors.update(leader, view.showSensors ?? true, pose);
+    this.rig.update(scene.leader, pose, dt);
 
     const focus = this.rig.mode === 'chase' && scene.leader ? this.cars.leaderObject.position : this.rig.look;
     this.sun.target.position.copy(focus);

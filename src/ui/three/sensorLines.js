@@ -32,13 +32,19 @@ export class SensorLines {
     this.matrix = new THREE.Matrix4();
   }
 
-  /** @param {object | null} car leader car, or null to hide */
-  update(car, visible) {
+  /**
+   * @param {object | null} car leader car, or null to hide
+   * @param {{ x: number, y: number } | null} [pose] where the car is drawn (interpolated); the rays,
+   *   cast from the current step, move with it
+   */
+  update(car, visible, pose = car) {
     this.group.visible = visible && car !== null && car.sensors.length === this.rayCount;
     if (!this.group.visible) return;
-    const [cx, , cz] = toWorld3(car.x, car.y);
+    const dx = pose.x - car.x;
+    const dy = pose.y - car.y;
+    const [cx, , cz] = toWorld3(pose.x, pose.y);
     for (let r = 0; r < this.rayCount; r++) {
-      const [ex, , ez] = toWorld3(car.rayEnds[r * 2], car.rayEnds[r * 2 + 1]);
+      const [ex, , ez] = toWorld3(car.rayEnds[r * 2] + dx, car.rayEnds[r * 2 + 1] + dy);
       const o = r * 6;
       this.positions[o] = cx;
       this.positions[o + 1] = RAY_HEIGHT;

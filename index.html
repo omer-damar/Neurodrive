@@ -47,6 +47,33 @@
         <canvas id="canvas-2d"></canvas>
       </div>
       <div class="viewport" id="viewport-3d" hidden></div>
+      <div class="race-hud" id="race-hud" hidden>
+        <div class="race-bar">
+          <span class="race-chip race-chip-player" id="race-lap"></span>
+          <span class="race-chip race-time" id="race-time"></span>
+          <span class="race-chip race-chip-ai" id="race-ai"></span>
+          <button type="button" class="btn race-exit" id="btn-race-exit" data-i18n="race.exit"></button>
+        </div>
+        <p class="race-countdown" id="race-countdown" aria-live="assertive" hidden></p>
+        <div class="race-result" id="race-result" role="dialog" aria-labelledby="race-winner" hidden>
+          <h2 id="race-winner"></h2>
+          <dl class="stats" id="race-summary"></dl>
+          <div class="button-row">
+            <button type="button" class="btn btn-primary" id="btn-race-again" data-i18n="race.again"></button>
+            <button type="button" class="btn" id="btn-race-close" data-i18n="race.exit"></button>
+          </div>
+        </div>
+        <div class="race-touch" id="race-touch">
+          <div class="race-touch-group">
+            <button type="button" class="race-touch-btn" data-action="left" data-i18n-aria="race.touch.left">◀</button>
+            <button type="button" class="race-touch-btn" data-action="right" data-i18n-aria="race.touch.right">▶</button>
+          </div>
+          <div class="race-touch-group">
+            <button type="button" class="race-touch-btn" data-action="brake" data-i18n-aria="race.touch.brake">▼</button>
+            <button type="button" class="race-touch-btn" data-action="gas" data-i18n-aria="race.touch.gas">▲</button>
+          </div>
+        </div>
+      </div>
     </section>
 
     <aside class="panel" data-i18n-aria="panel.label">
@@ -80,6 +107,26 @@
           <div id="speed-buttons" class="seg" role="group" data-i18n-aria="controls.speed"></div>
         </div>
         <p class="muted hint" data-i18n="controls.help"></p>
+      </section>
+
+      <section class="panel-section">
+        <h2 data-i18n="race.heading"></h2>
+        <label class="field">
+          <span data-i18n="race.car"></span>
+          <select id="race-car" class="select"></select>
+        </label>
+        <label class="field">
+          <span data-i18n="race.opponent"></span>
+          <select id="race-opponent" class="select">
+            <option value="pretrained" data-i18n="race.opponent.pretrained"></option>
+            <option value="champion" id="race-opponent-champion" data-i18n="race.opponent.champion" disabled></option>
+          </select>
+        </label>
+        <div class="button-row">
+          <button type="button" id="btn-race" class="btn btn-primary" data-i18n="race.start"></button>
+        </div>
+        <p id="race-best" class="muted hint"></p>
+        <p class="muted hint" data-i18n="race.help"></p>
       </section>
 
       <section class="panel-section">

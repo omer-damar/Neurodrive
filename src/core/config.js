@@ -78,6 +78,11 @@ export const SETTINGS_LIMITS = Object.freeze({
 });
 export const MAX_POPULATION = SETTINGS_LIMITS.populationSize[1]; // 3D instance buffers are sized for this
 
+// --- Player vs AI race (Phase 8) ---
+export const RACE_COUNTDOWN_STEPS = 3 * STEPS_PER_SECOND; // 3-2-1 before the start
+export const RACE_RESPAWN_STEPS = STEPS_PER_SECOND; // a crashed car waits this long before it is put back
+export const RACE_LANE_OFFSET = TRACK_WIDTH / 4; // the two cars start side by side, this far from the centre
+
 // --- 3D view (4.1, 4.10) ---
 export const SCALE = 0.05; // world unit -> metres in three.js (1 unit = 5 cm)
 export const BARRIER_HEIGHT = 0.6; // metres

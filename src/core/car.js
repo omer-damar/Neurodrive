@@ -23,10 +23,12 @@ export class Car {
   /**
    * @param {import('./track.js').Track} track
    * @param {{ stuckSteps?: number, reverseTolerance?: number, laps?: number,
-   *           rayCount?: number, rayRange?: number, raySpread?: number }} [options]
-   *   Manual driving passes stuckSteps: Infinity so a human can stand still.
+   *           rayCount?: number, rayRange?: number, raySpread?: number, laneOffset?: number }} [options]
+   *   Manual driving passes stuckSteps: Infinity so a human can stand still. laneOffset starts the
+   *   car this far right (negative: left) of the centre line, so two racers do not overlap.
    */
   constructor(track, options = {}) {
+    this.laneOffset = options.laneOffset ?? 0;
     this.stuckSteps = options.stuckSteps ?? STUCK_STEPS;
     this.reverseTolerance = options.reverseTolerance ?? REVERSE_TOLERANCE;
     this.laps = options.laps ?? LAPS;
@@ -43,9 +45,10 @@ export class Car {
 
   reset(track = this.track) {
     this.track = track;
-    this.x = track.startX;
-    this.y = track.startY;
     this.angle = track.startAngle;
+    // Right of the heading in screen space (y down) is (-sin, cos).
+    this.x = track.startX - Math.sin(this.angle) * this.laneOffset;
+    this.y = track.startY + Math.cos(this.angle) * this.laneOffset;
     this.speed = 0;
     this.steer = 0;
     this.alive = true;
@@ -58,8 +61,16 @@ export class Car {
     this.steps = 0;
     this.finishStep = -1;
     this.lapSteps.length = 0;
+    this.#keepPose();
     this.#updateCorners();
     this.sense();
+  }
+
+  // Pose before the latest step, so renderers can draw between two steps (high refresh-rate screens).
+  #keepPose() {
+    this.prevX = this.x;
+    this.prevY = this.y;
+    this.prevAngle = this.angle;
   }
 
   /**
@@ -103,6 +114,7 @@ export class Car {
    */
   update(throttle, steer) {
     if (!this.alive || this.finished) return;
+    this.#keepPose();
     throttle = clamp(throttle, -1, 1);
     steer = clamp(steer, -1, 1);
 
@@ -152,6 +164,27 @@ export class Car {
     } else if (this.progress < this.maxProgress - this.reverseTolerance) {
       this.#die(DEATH_CAUSES.REVERSE);
     }
+  }
+
+  /**
+   * Puts a crashed car back on the centre line where it was, standing still and facing along the
+   * track (race mode). Laps and progress are kept.
+   */
+  respawn() {
+    const c = this.track.center;
+    const i = this.trackIdx;
+    const j = (i + 1) % this.track.n;
+    this.x = c[i * 2];
+    this.y = c[i * 2 + 1];
+    this.angle = Math.atan2(c[j * 2 + 1] - c[i * 2 + 1], c[j * 2] - c[i * 2]);
+    this.speed = 0;
+    this.steer = 0;
+    this.alive = true;
+    this.deathCause = null;
+    this.stepsSinceImprove = 0;
+    this.#keepPose();
+    this.#updateCorners();
+    this.sense();
   }
 
   #die(cause) {

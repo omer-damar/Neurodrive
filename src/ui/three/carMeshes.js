@@ -1,10 +1,12 @@
 // Cars in 3D. Each car type (a loaded Kenney model, or the built-in box car as fallback) is split
 // into its mesh parts, and every part becomes one InstancedMesh, so the whole population costs a
-// few draw calls. Car i uses type i % typeCount. The leader is drawn separately as a full clone with
-// steering front wheels and body roll. Matrices and colours are rewritten in place every frame.
+// few draw calls. Car i uses type i % typeCount, unless view.carModels names its model (race mode).
+// The leader is drawn separately as a full clone with steering front wheels and body roll.
+// Matrices and colours are rewritten in place every frame.
 import * as THREE from 'three';
 import { CAR_LENGTH, CAR_WIDTH, SCALE, MAX_SPEED } from '../../core/config.js';
 import { toWorld3, toRotationY } from './geometry.js';
+import { carPose } from '../interpolate.js';
 
 const L = CAR_LENGTH * SCALE; // 1.1 m
 const W = CAR_WIDTH * SCALE; // 0.55 m
@@ -31,6 +33,7 @@ export class CarMeshes {
     this.ownsTemplates = !templates || templates.length === 0;
     const list = this.ownsTemplates ? [createBoxTemplate()] : templates;
     this.types = list.map((template) => createCarType(template, capacity));
+    this.typeByName = new Map(list.map((template, t) => [template.name, t]));
     for (const type of this.types) for (const part of type.parts) this.group.add(part.mesh);
 
     // Leader: one full clone per type, created on first use; only the current one is visible.
@@ -47,6 +50,7 @@ export class CarMeshes {
     this.one = new THREE.Vector3(1, 1, 1);
     this.up = new THREE.Vector3(0, 1, 0);
     this.color = new THREE.Color();
+    this.pose = { x: 0, y: 0, angle: 0 }; // reused per car
     this.counts = new Uint32Array(this.types.length);
     this.drawList = [];
     this.visible = new Set();
@@ -59,22 +63,26 @@ export class CarMeshes {
 
   /**
    * @param {{ cars: object[], leader: object | null }} scene
-   * @param {{ visibleCount?: number, dimOthers?: boolean, highlightLeader?: boolean }} view
+   * @param {{ visibleCount?: number, dimOthers?: boolean, highlightLeader?: boolean,
+   *           carModels?: string[], alpha?: number }} view carModels: model name per car index;
+   *   unknown names (or the box fallback) use the default type. alpha: how far the frame is
+   *   between the previous and the current physics step (0..1)
    */
   update(scene, view) {
     const cars = scene.cars;
     const leader = view.highlightLeader === false ? null : scene.leader;
     const visible = this.#visibleSet(cars, view.visibleCount ?? Infinity);
     const dim = view.dimOthers === true;
-    const typeCount = this.types.length;
+    const step = view.alpha ?? 1;
     this.counts.fill(0);
     for (let i = 0; i < cars.length; i++) {
       const car = cars[i];
       if (car === leader || (visible !== null && !visible.has(car))) continue;
-      const type = this.types[i % typeCount];
-      const slot = this.counts[i % typeCount]++;
+      const t = this.#typeOf(i, view.carModels);
+      const type = this.types[t];
+      const slot = this.counts[t]++;
       if (slot >= type.capacity) continue;
-      this.#composeCar(car);
+      this.#composeCar(carPose(car, step, this.pose));
       this.color.copy(car.finished ? TINTS.finished : car.alive ? TINTS.alive : TINTS.dead);
       if (dim) this.color.multiplyScalar(TINTS.dimFactor);
       for (const part of type.parts) {
@@ -91,7 +99,7 @@ export class CarMeshes {
     });
 
     this.leaderPivot.visible = leader !== null;
-    if (leader) this.#placeLeader(leader, cars.indexOf(leader) % typeCount);
+    if (leader) this.#placeLeader(leader, carPose(leader, step, this.pose), this.#typeOf(cars.indexOf(leader), view.carModels));
   }
 
   dispose() {
@@ -106,10 +114,14 @@ export class CarMeshes {
     if (this.ownsTemplates) disposeObject(this.types[0].template.root);
   }
 
-  #composeCar(car) {
-    const [x, , z] = toWorld3(car.x, car.y);
+  #typeOf(index, names) {
+    return this.typeByName.get(names?.[index]) ?? index % this.types.length;
+  }
+
+  #composeCar(pose) {
+    const [x, , z] = toWorld3(pose.x, pose.y);
     this.position.set(x, 0, z);
-    this.quaternion.setFromAxisAngle(this.up, toRotationY(car.angle));
+    this.quaternion.setFromAxisAngle(this.up, toRotationY(pose.angle));
     this.matrix.compose(this.position, this.quaternion, this.one);
   }
 
@@ -126,7 +138,7 @@ export class CarMeshes {
     return this.visible;
   }
 
-  #placeLeader(car, typeIndex) {
+  #placeLeader(car, pose, typeIndex) {
     let entry = this.leaders.get(typeIndex);
     if (!entry) {
       entry = createLeader(this.types[typeIndex].template);
@@ -137,9 +149,9 @@ export class CarMeshes {
       this.leaderRoll.add(entry.root);
       this.leaderClone = entry.root;
     }
-    const [x, , z] = toWorld3(car.x, car.y);
+    const [x, , z] = toWorld3(pose.x, pose.y);
     this.leaderPivot.position.set(x, 0, z);
-    this.leaderPivot.rotation.y = toRotationY(car.angle);
+    this.leaderPivot.rotation.y = toRotationY(pose.angle);
     // Lean away from the turn, more at speed (roll about the forward X axis).
     this.leaderRoll.rotation.x = -car.steer * (car.speed / MAX_SPEED) * MAX_ROLL;
     entry.pivots.forEach((pivot, k) => {

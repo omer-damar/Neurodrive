@@ -15,6 +15,7 @@ import { NeuralNetwork } from '../core/neuralNetwork.js';
 import { PRETRAINED_BRAIN } from '../core/pretrained.js';
 import { trackFromStroke, trackFromStored } from '../core/trackSketch.js';
 import { TrackEditor } from './editor.js';
+import { RaceMode } from './race.js';
 import { Renderer2D } from './renderer2d.js';
 import { FixedStepper } from './fixedStep.js';
 import { t, applyTranslations, setLocale, getLocale, DEFAULT_LOCALE } from './i18n.js';
@@ -29,6 +30,7 @@ import {
   parseBrain,
   saveCustomTrack,
   loadCustomTrackJSON,
+  clearRaceBest,
 } from './storage.js';
 
 const MAX_SPEED_MODE = 'max';
@@ -75,6 +77,9 @@ const els = {
   brainStatus: document.getElementById('brain-status'),
   drawTrack: document.getElementById('btn-draw-track'),
   customOption: document.getElementById('track-custom-option'),
+  raceStart: document.getElementById('btn-race'),
+  raceOpponent: document.getElementById('race-opponent'),
+  raceChampion: document.getElementById('race-opponent-champion'),
 };
 
 const renderer = new Renderer2D(els.canvas);
@@ -88,6 +93,7 @@ const view = {
   dimOthers: false,
   camera: 'chase',
   shadows: true,
+  alpha: 1, // how far the frame is between two physics steps; renderers interpolate the cars
 };
 
 let activeView = '2d';
@@ -103,6 +109,27 @@ let noticeTimer = 0;
 let customTrack = null; // the drawn track, if any (also in localStorage)
 let previousTrackValue = DEFAULT_TRACK; // track-select value before the editor opened
 const editor = new TrackEditor(els.canvas, { onFinish: finishDrawing });
+const raceMode = new RaceMode(
+  {
+    start: els.raceStart,
+    car: document.getElementById('race-car'),
+    best: document.getElementById('race-best'),
+    hud: document.getElementById('race-hud'),
+    lap: document.getElementById('race-lap'),
+    time: document.getElementById('race-time'),
+    ai: document.getElementById('race-ai'),
+    exit: document.getElementById('btn-race-exit'),
+    countdown: document.getElementById('race-countdown'),
+    result: document.getElementById('race-result'),
+    winner: document.getElementById('race-winner'),
+    summary: document.getElementById('race-summary'),
+    again: document.getElementById('btn-race-again'),
+    close: document.getElementById('btn-race-close'),
+    touch: document.getElementById('race-touch'),
+  },
+  { onExit: endRace },
+);
+let pretrainedBrain = null; // parsed on first use
 let chartLength = -1; // history length the chart last drew
 // Training settings: `applied` runs now; `draft` is what the panel shows until "Start new training".
 let appliedSettings = defaultSettings();
@@ -247,10 +274,37 @@ function finishDrawing(points) {
   }
   customTrack = result.track;
   const stored = saveCustomTrack(customTrack);
+  clearRaceBest(CUSTOM_TRACK); // a new drawing: old times no longer compare
+  raceMode.updateBest(CUSTOM_TRACK);
   els.customOption.hidden = false;
   els.trackSelect.value = CUSTOM_TRACK;
   sim.setTrack(customTrack);
   showNotice(stored ? 'editor.saved' : 'editor.notStored', { ok: true });
+}
+
+// --- You vs AI: training waits while the player races the champion (or the pretrained brain) ---
+function startRace() {
+  if (editor.active) stopDrawing();
+  const useChampion = els.raceOpponent.value === 'champion' && sim.bestBrain !== null;
+  pretrainedBrain ??= NeuralNetwork.fromJSON(PRETRAINED_BRAIN);
+  raceMode.view.camera = 'chase'; // from behind the player; the camera picker can still change it
+  raceMode.view.shadows = view.shadows;
+  els.cameraSelect.value = 'chase';
+  setRaceLock(true);
+  raceMode.start(sim.track, useChampion ? sim.bestBrain : pretrainedBrain, els.trackSelect.value);
+}
+
+function endRace() {
+  setRaceLock(false);
+  els.cameraSelect.value = view.camera;
+  stepper.reset();
+}
+
+// The race runs on the current track, so it cannot change underneath it.
+function setRaceLock(locked) {
+  els.trackSelect.disabled = locked;
+  els.drawTrack.disabled = locked;
+  els.raceStart.disabled = locked;
 }
 
 // View and camera choice survive reloads; storage may be unavailable (private mode), so best effort.
@@ -299,6 +353,7 @@ function setLanguage(name) {
   if (notice) els.notice.textContent = t(notice.key, notice.params);
   els.drawTrack.textContent = t(editor.active ? 'editor.cancel' : 'editor.draw');
   if (brainMessage) showBrainMessage(brainMessage.key, brainMessage.params);
+  raceMode.refresh(els.trackSelect.value);
   updateStats();
   networkView.render(leaderBrain());
   chart.setHistory(sim.history);
@@ -386,6 +441,9 @@ function updateBrainButtons() {
   els.saveBrain.disabled = !ready;
   els.downloadBrain.disabled = !ready;
   els.loadSaved.disabled = !hasSavedBrain();
+  // Racing the champion needs one; otherwise the pretrained brain is the opponent.
+  els.raceChampion.disabled = !ready;
+  if (!ready && els.raceOpponent.value === 'champion') els.raceOpponent.value = 'pretrained';
 }
 
 function runSteps(frameMs) {
@@ -395,10 +453,12 @@ function runSteps(frameMs) {
     do {
       for (let i = 0; i < 10; i++) sim.step(); // check the clock in small batches
     } while (performance.now() - start < MAX_MODE_FRAME_BUDGET_MS);
+    view.alpha = 1;
     return;
   }
   const steps = stepper.advance(frameMs, speed);
   for (let i = 0; i < steps; i++) sim.step();
+  view.alpha = stepper.alpha;
 }
 
 function seconds(steps) {
@@ -458,7 +518,10 @@ let lastTime = performance.now();
 let lastStats = 0;
 
 function frame(now) {
-  if (editor.active) {
+  if (raceMode.active) {
+    raceMode.advance(now - lastTime, now);
+    if (raceMode.active) activeRenderer().render(raceMode.race, raceMode.view);
+  } else if (editor.active) {
     editor.render(); // the simulation waits while a track is drawn
   } else {
     runSteps(now - lastTime);
@@ -482,12 +545,15 @@ els.playPause.addEventListener('click', () => setRunning(!running));
 els.nextGen.addEventListener('click', () => sim.endGeneration());
 els.reset.addEventListener('click', () => newSimulation(trackFor(els.trackSelect.value)));
 els.drawTrack.addEventListener('click', startDrawing);
+els.raceStart.addEventListener('click', startRace);
+els.raceOpponent.addEventListener('change', () => els.raceOpponent.blur());
 
 window.addEventListener('keydown', (event) => {
   if (event.code === 'Escape' && editor.active) {
     stopDrawing();
     return;
   }
+  if (raceMode.active) return; // the race handles its own keys
   if (event.target instanceof HTMLSelectElement || event.target instanceof HTMLButtonElement) return;
   if (event.code === 'Space') {
     event.preventDefault();
@@ -498,6 +564,7 @@ window.addEventListener('keydown', (event) => {
 // Changing track keeps the trained brains: a quick generalization test.
 els.trackSelect.addEventListener('change', () => {
   sim.setTrack(trackFor(els.trackSelect.value));
+  raceMode.updateBest(els.trackSelect.value);
   els.trackSelect.blur();
 });
 
@@ -526,6 +593,7 @@ for (const btn of els.langButtons) {
 
 els.shadowsToggle.addEventListener('change', () => {
   view.shadows = els.shadowsToggle.checked;
+  raceMode.view.shadows = view.shadows;
   savePrefs();
 });
 
@@ -569,8 +637,12 @@ els.loadPretrained.addEventListener('click', () => {
 });
 
 els.cameraSelect.addEventListener('change', () => {
-  view.camera = els.cameraSelect.value;
   els.cameraSelect.blur();
+  if (raceMode.active) {
+    raceMode.view.camera = els.cameraSelect.value; // only for this race; training keeps its camera
+    return;
+  }
+  view.camera = els.cameraSelect.value;
   savePrefs();
 });
 

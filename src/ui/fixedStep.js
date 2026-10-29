@@ -31,6 +31,11 @@ export class FixedStepper {
     return steps;
   }
 
+  /** How far the time left over is into the next step (0..1), for drawing between two steps. */
+  get alpha() {
+    return this.accumulator / this.stepMs;
+  }
+
   reset() {
     this.accumulator = 0;
   }

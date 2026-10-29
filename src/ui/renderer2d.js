@@ -1,5 +1,6 @@
 // Canvas 2D top-down renderer. Reads the scene, never modifies it.
 import { CAR_LENGTH, CAR_WIDTH } from '../core/config.js';
+import { carPose } from './interpolate.js';
 
 const COLORS = {
   grass: '#16221a',
@@ -46,6 +47,7 @@ export class Renderer2D {
     this.scale = 1;
     this.offsetX = 0;
     this.offsetY = 0;
+    this.pose = { x: 0, y: 0, angle: 0 }; // reused per car
     this.resize();
   }
 
@@ -75,9 +77,10 @@ export class Renderer2D {
   /**
    * @param {{ track: object, cars: object[], leader: object | null }} scene
    * @param {{ highlightLeader?: boolean, showSensors?: boolean,
-   *           visibleCount?: number, dimOthers?: boolean }} [view]
+   *           visibleCount?: number, dimOthers?: boolean, alpha?: number }} [view]
    *   visibleCount draws only the N furthest cars (the simulation still runs them all);
-   *   dimOthers fades every car except the leader.
+   *   dimOthers fades every car except the leader; alpha (0..1) is how far the frame is between
+   *   the previous and the current physics step.
    */
   render(scene, view = {}) {
     const ctx = this.ctx;
@@ -99,12 +102,14 @@ export class Renderer2D {
     const highlightLeader = view.highlightLeader ?? true;
     const leader = highlightLeader ? scene.leader : null;
     const otherAlpha = view.dimOthers ? DIMMED_ALPHA : 1;
+    const step = view.alpha ?? 1;
     for (const car of this.#visibleCars(scene.cars, view.visibleCount ?? Infinity)) {
-      if (car !== leader) this.#drawCar(car, false, otherAlpha);
+      if (car !== leader) this.#drawCar(car, carPose(car, step, this.pose), false, otherAlpha);
     }
     if (leader) {
-      if (view.showSensors ?? true) this.#drawSensors(leader);
-      this.#drawCar(leader, true, 1);
+      const pose = carPose(leader, step, this.pose);
+      if (view.showSensors ?? true) this.#drawSensors(leader, pose);
+      this.#drawCar(leader, pose, true, 1);
     }
   }
 
@@ -121,17 +126,20 @@ export class Renderer2D {
     return list;
   }
 
-  #drawSensors(car) {
+  // Rays were cast from the current step; they move with the drawn (interpolated) car.
+  #drawSensors(car, pose) {
     const ctx = this.ctx;
+    const dx = pose.x - car.x;
+    const dy = pose.y - car.y;
     ctx.lineWidth = SENSOR_LINE_WIDTH;
     for (let r = 0; r < car.sensors.length; r++) {
-      const ex = car.rayEnds[r * 2];
-      const ey = car.rayEnds[r * 2 + 1];
+      const ex = car.rayEnds[r * 2] + dx;
+      const ey = car.rayEnds[r * 2 + 1] + dy;
       const color = sensorColor(car.sensors[r]);
       ctx.strokeStyle = color;
       ctx.globalAlpha = 0.8;
       ctx.beginPath();
-      ctx.moveTo(car.x, car.y);
+      ctx.moveTo(pose.x, pose.y);
       ctx.lineTo(ex, ey);
       ctx.stroke();
       if (car.sensors[r] > 0) {
@@ -204,7 +212,7 @@ export class Renderer2D {
     }
   }
 
-  #drawCar(car, isLeader, alpha) {
+  #drawCar(car, pose, isLeader, alpha) {
     const ctx = this.ctx;
     const L = CAR_LENGTH;
     const W = CAR_WIDTH;
@@ -217,8 +225,8 @@ export class Renderer2D {
     }
     ctx.save();
     ctx.globalAlpha = alpha;
-    ctx.translate(car.x, car.y);
-    ctx.rotate(car.angle);
+    ctx.translate(pose.x, pose.y);
+    ctx.rotate(pose.angle);
 
     // Tyres poke out slightly from under the body; front pair turns with steer.
     ctx.fillStyle = COLORS.tyre;
