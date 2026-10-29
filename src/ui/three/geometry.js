@@ -146,6 +146,25 @@ export function trackBounds3(track) {
   };
 }
 
+/**
+ * Top-camera wheel zoom. `zoom` scales the camera's distance (1 = whole track, smaller = closer).
+ * Zooming keeps the ground point under the cursor fixed: the focus moves towards it by the zoom
+ * ratio. The focus stays inside the track bounds, and at full zoom-out it is the track centre.
+ * @returns {{ zoom: number, x: number, z: number }} new zoom and focus point (three.js x/z)
+ */
+export function zoomTopCamera({ zoom, x, z }, point, wheelDelta, bounds, limits) {
+  const next = Math.min(limits.max, Math.max(limits.min, zoom * Math.exp(wheelDelta * limits.speed)));
+  if (next >= limits.max) return { zoom: next, x: bounds.cx, z: bounds.cz };
+  const ratio = next / zoom;
+  const clampX = (v) => Math.min(bounds.maxX, Math.max(bounds.minX, v));
+  const clampZ = (v) => Math.min(bounds.maxZ, Math.max(bounds.minZ, v));
+  return {
+    zoom: next,
+    x: clampX(point.x + (x - point.x) * ratio),
+    z: clampZ(point.z + (z - point.z) * ratio),
+  };
+}
+
 // The checker corners' winding depends on track direction, so pick the triangle order that faces +Y.
 function upFacingQuad(positions, base) {
   const p = (k) => [positions[(base + k) * 3], positions[(base + k) * 3 + 2]];

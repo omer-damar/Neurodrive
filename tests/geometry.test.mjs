@@ -8,6 +8,7 @@ import {
   buildBarrier,
   buildStartLine,
   trackBounds3,
+  zoomTopCamera,
   barrierColor,
   BARRIER_COLORS,
 } from '../src/ui/three/geometry.js';
@@ -106,4 +107,32 @@ test('trackBounds3 gives the track extent in metres', () => {
   assert.ok(Math.abs(b3.minX - b.minX * SCALE) < 1e-12);
   assert.ok(Math.abs(b3.maxZ - b.maxY * SCALE) < 1e-12);
   assert.ok(Math.abs(b3.size - Math.max(b.maxX - b.minX, b.maxY - b.minY) * SCALE) < 1e-12);
+});
+
+const ZOOM_LIMITS = { min: 0.15, max: 1, speed: 0.0015 };
+const ZOOM_BOUNDS = { minX: 0, maxX: 60, minZ: 0, maxZ: 40, cx: 30, cz: 20, size: 60 };
+
+test('top camera wheel: scrolling up zooms in towards the cursor, down zooms out', () => {
+  const start = { zoom: 1, x: 30, z: 20 };
+  const cursor = { x: 50, z: 30 };
+  const closer = zoomTopCamera(start, cursor, -200, ZOOM_BOUNDS, ZOOM_LIMITS);
+  assert.ok(closer.zoom < 1);
+  // The focus moved towards the cursor by the zoom ratio, so the cursor point stays put.
+  assert.ok(Math.abs(closer.x - (50 + (30 - 50) * closer.zoom)) < 1e-9);
+  assert.ok(Math.abs(closer.z - (30 + (20 - 30) * closer.zoom)) < 1e-9);
+  const farther = zoomTopCamera(closer, cursor, 100, ZOOM_BOUNDS, ZOOM_LIMITS);
+  assert.ok(farther.zoom > closer.zoom);
+});
+
+test('top camera wheel: zoom is clamped and full zoom-out recentres on the track', () => {
+  const deep = zoomTopCamera({ zoom: 1, x: 30, z: 20 }, { x: 59, z: 39 }, -1e6, ZOOM_BOUNDS, ZOOM_LIMITS);
+  assert.equal(deep.zoom, ZOOM_LIMITS.min);
+  assert.ok(deep.x <= ZOOM_BOUNDS.maxX && deep.z <= ZOOM_BOUNDS.maxZ);
+  const out = zoomTopCamera({ zoom: 0.3, x: 55, z: 5 }, { x: 0, z: 0 }, 1e6, ZOOM_BOUNDS, ZOOM_LIMITS);
+  assert.deepEqual(out, { zoom: 1, x: 30, z: 20 });
+});
+
+test('top camera wheel: the focus never leaves the track bounds', () => {
+  const view = zoomTopCamera({ zoom: 0.5, x: 58, z: 38 }, { x: 500, z: 500 }, -300, ZOOM_BOUNDS, ZOOM_LIMITS);
+  assert.ok(view.x <= 60 && view.z <= 40);
 });
