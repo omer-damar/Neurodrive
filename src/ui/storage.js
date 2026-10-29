@@ -42,6 +42,28 @@ export function hasSavedBrain(storage = browserStorage()) {
   }
 }
 
+export const TRACK_STORAGE_KEY = 'neurodrive.customTrack';
+
+/** Saves a custom (drawn) track's control points; false when storage is unavailable. */
+export function saveCustomTrack(track, storage = browserStorage()) {
+  try {
+    storage.setItem(TRACK_STORAGE_KEY, JSON.stringify(track.toJSON()));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** The stored custom track as plain JSON (rebuilt and validated by core/trackSketch.js), or null. */
+export function loadCustomTrackJSON(storage = browserStorage()) {
+  try {
+    const text = storage.getItem(TRACK_STORAGE_KEY);
+    return text === null ? null : JSON.parse(text);
+  } catch {
+    return null;
+  }
+}
+
 export function brainToText(brain) {
   return `${JSON.stringify(brain.toJSON(), null, 2)}\n`;
 }

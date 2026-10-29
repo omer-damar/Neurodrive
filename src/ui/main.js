@@ -13,17 +13,29 @@ import { Track } from '../core/track.js';
 import { Simulation, configForBrain } from '../core/simulation.js';
 import { NeuralNetwork } from '../core/neuralNetwork.js';
 import { PRETRAINED_BRAIN } from '../core/pretrained.js';
+import { trackFromStroke, trackFromStored } from '../core/trackSketch.js';
+import { TrackEditor } from './editor.js';
 import { Renderer2D } from './renderer2d.js';
 import { FixedStepper } from './fixedStep.js';
 import { t, applyTranslations, setLocale, getLocale, DEFAULT_LOCALE } from './i18n.js';
 import { NetworkView } from './networkView.js';
 import { FitnessChart } from './chart.js';
 import { SETTING_NAMES, defaultSettings, clampSetting, formatSetting, sameSettings } from './settings.js';
-import { saveBrain, loadSavedBrain, hasSavedBrain, downloadBrain, parseBrain } from './storage.js';
+import {
+  saveBrain,
+  loadSavedBrain,
+  hasSavedBrain,
+  downloadBrain,
+  parseBrain,
+  saveCustomTrack,
+  loadCustomTrackJSON,
+} from './storage.js';
 
 const MAX_SPEED_MODE = 'max';
 const PREFS_KEY = 'neurodrive.view';
 const LANG_KEY = 'neurodrive.lang';
+const CUSTOM_TRACK = 'custom'; // track-select value of the drawn track
+const NOTICE_HIDE_MS = 6000; // success notices fade out; warnings stay until the next action
 
 const els = {
   canvas: document.getElementById('canvas-2d'),
@@ -61,6 +73,8 @@ const els = {
   brainFile: document.getElementById('brain-file'),
   loadPretrained: document.getElementById('btn-load-pretrained'),
   brainStatus: document.getElementById('brain-status'),
+  drawTrack: document.getElementById('btn-draw-track'),
+  customOption: document.getElementById('track-custom-option'),
 };
 
 const renderer = new Renderer2D(els.canvas);
@@ -84,7 +98,11 @@ let sim;
 let running = true;
 let speed = 1; // a multiplier from SPEED_MULTIPLIERS, or MAX_SPEED_MODE
 let bestLapSteps = null; // all-time
-let noticeKey = null;
+let notice = null; // { key, params } of the visible notice, re-translated on language change
+let noticeTimer = 0;
+let customTrack = null; // the drawn track, if any (also in localStorage)
+let previousTrackValue = DEFAULT_TRACK; // track-select value before the editor opened
+const editor = new TrackEditor(els.canvas, { onFinish: finishDrawing });
 let chartLength = -1; // history length the chart last drew
 // Training settings: `applied` runs now; `draft` is what the panel shows until "Start new training".
 let appliedSettings = defaultSettings();
@@ -173,15 +191,66 @@ async function setView(name) {
   savePrefs();
 }
 
-function showNotice(key) {
-  noticeKey = key;
-  els.notice.textContent = t(key);
+/** @param {{ ok?: boolean, params?: object }} [options] ok notices are green and hide after a while */
+function showNotice(key, { ok = false, params = {} } = {}) {
+  notice = { key, params };
+  els.notice.textContent = t(key, params);
+  els.notice.classList.toggle('notice-ok', ok);
   els.notice.hidden = false;
+  clearTimeout(noticeTimer);
+  if (ok) noticeTimer = setTimeout(hideNotice, NOTICE_HIDE_MS);
 }
 
 function hideNotice() {
-  noticeKey = null;
+  notice = null;
+  clearTimeout(noticeTimer);
   els.notice.hidden = true;
+}
+
+function trackFor(value) {
+  return value === CUSTOM_TRACK && customTrack ? customTrack : Track.preset(value);
+}
+
+// --- Track editor (2D only): the simulation pauses while a stroke is drawn ---
+function startDrawing() {
+  if (editor.active) {
+    stopDrawing();
+    return;
+  }
+  if (activeView !== '2d') setView('2d');
+  previousTrackValue = els.trackSelect.value;
+  editor.start();
+  els.drawTrack.textContent = t('editor.cancel');
+  els.drawTrack.classList.add('btn-primary');
+  els.trackSelect.disabled = true;
+  showNotice('editor.hint');
+}
+
+function stopDrawing() {
+  editor.stop();
+  els.drawTrack.textContent = t('editor.draw');
+  els.drawTrack.classList.remove('btn-primary');
+  els.trackSelect.disabled = false;
+  hideNotice();
+  stepper.reset();
+}
+
+// A valid drawing becomes the custom track and training continues on it with the same brains;
+// an invalid one leaves the previous track in place.
+function finishDrawing(points) {
+  const result = trackFromStroke(points);
+  stopDrawing();
+  if (!result.ok) {
+    els.trackSelect.value = previousTrackValue;
+    showNotice('editor.invalid', { params: { reason: t(`error.${result.error}`) } });
+    return;
+  }
+  customTrack = result.track;
+  const stored = saveCustomTrack(customTrack);
+  els.customOption.hidden = false;
+  els.trackSelect.value = CUSTOM_TRACK;
+  sim.setTrack(customTrack);
+  showNotice(stored ? 'editor.saved' : 'editor.notStored', { ok: true });
 }
 
 // View and camera choice survive reloads; storage may be unavailable (private mode), so best effort.
@@ -227,7 +296,8 @@ function setLanguage(name) {
   for (const btn of els.speeds.querySelectorAll('button')) {
     if (btn.dataset.speed === MAX_SPEED_MODE) btn.textContent = t('controls.max');
   }
-  if (noticeKey) els.notice.textContent = t(noticeKey);
+  if (notice) els.notice.textContent = t(notice.key, notice.params);
+  els.drawTrack.textContent = t(editor.active ? 'editor.cancel' : 'editor.draw');
   if (brainMessage) showBrainMessage(brainMessage.key, brainMessage.params);
   updateStats();
   networkView.render(leaderBrain());
@@ -272,7 +342,7 @@ function buildSettings() {
 function applySettings() {
   appliedSettings = { ...draftSettings };
   els.settingsPending.hidden = true;
-  newSimulation(Track.preset(els.trackSelect.value));
+  newSimulation(trackFor(els.trackSelect.value));
 }
 
 // Shows applied settings in the panel (after a brain changed the network size).
@@ -304,7 +374,7 @@ function startFromBrain(brain, messageKey) {
   }
   appliedSettings = { ...appliedSettings, hiddenNeurons: shape.hiddenNeurons, rayCount: shape.rayCount };
   syncSettingInputs();
-  newSimulation(Track.preset(els.trackSelect.value), { rayRange: shape.rayRange, raySpread: shape.raySpread });
+  newSimulation(trackFor(els.trackSelect.value), { rayRange: shape.rayRange, raySpread: shape.raySpread });
   sim.seedFrom(brain);
   showBrainMessage(messageKey);
   updateBrainButtons();
@@ -388,9 +458,13 @@ let lastTime = performance.now();
 let lastStats = 0;
 
 function frame(now) {
-  runSteps(now - lastTime);
+  if (editor.active) {
+    editor.render(); // the simulation waits while a track is drawn
+  } else {
+    runSteps(now - lastTime);
+    activeRenderer().render(sim, view);
+  }
   lastTime = now;
-  activeRenderer().render(sim, view);
   if (now - lastStats >= 1000 / STATS_UPDATE_HZ) {
     updateStats();
     updateBrainButtons();
@@ -406,9 +480,14 @@ function frame(now) {
 
 els.playPause.addEventListener('click', () => setRunning(!running));
 els.nextGen.addEventListener('click', () => sim.endGeneration());
-els.reset.addEventListener('click', () => newSimulation(Track.preset(els.trackSelect.value)));
+els.reset.addEventListener('click', () => newSimulation(trackFor(els.trackSelect.value)));
+els.drawTrack.addEventListener('click', startDrawing);
 
 window.addEventListener('keydown', (event) => {
+  if (event.code === 'Escape' && editor.active) {
+    stopDrawing();
+    return;
+  }
   if (event.target instanceof HTMLSelectElement || event.target instanceof HTMLButtonElement) return;
   if (event.code === 'Space') {
     event.preventDefault();
@@ -418,7 +497,7 @@ window.addEventListener('keydown', (event) => {
 
 // Changing track keeps the trained brains: a quick generalization test.
 els.trackSelect.addEventListener('change', () => {
-  sim.setTrack(Track.preset(els.trackSelect.value));
+  sim.setTrack(trackFor(els.trackSelect.value));
   els.trackSelect.blur();
 });
 
@@ -435,7 +514,10 @@ els.sensorsToggle.addEventListener('change', () => {
 });
 
 for (const btn of els.viewButtons) {
-  btn.addEventListener('click', () => setView(btn.dataset.view));
+  btn.addEventListener('click', () => {
+    if (editor.active) stopDrawing(); // the editor lives in the 2D view
+    setView(btn.dataset.view);
+  });
 }
 
 for (const btn of els.langButtons) {
@@ -492,7 +574,10 @@ els.cameraSelect.addEventListener('change', () => {
   savePrefs();
 });
 
-new ResizeObserver(() => renderer.resize()).observe(els.viewport);
+new ResizeObserver(() => {
+  renderer.resize();
+  if (editor.active) editor.resize();
+}).observe(els.viewport);
 new ResizeObserver(() => renderer3d?.resize()).observe(els.viewport3d);
 new ResizeObserver(() => networkView.resize()).observe(els.networkCanvas);
 new ResizeObserver(() => chart.resize()).observe(els.chartCanvas);
@@ -501,6 +586,8 @@ buildSettings();
 setLocale(loadLocale());
 applyTranslations();
 buildSpeedButtons();
+customTrack = trackFromStored(loadCustomTrackJSON());
+els.customOption.hidden = customTrack === null;
 els.trackSelect.value = DEFAULT_TRACK;
 newSimulation(Track.preset(DEFAULT_TRACK));
 setSpeed(1);

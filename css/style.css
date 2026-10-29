@@ -139,6 +139,21 @@ body {
   height: 100%;
 }
 
+/* Track editor: the 2D canvas takes the pointer, also for touch (no scroll or zoom gestures). */
+.viewport canvas.is-editing {
+  cursor: crosshair;
+  touch-action: none;
+}
+
+.track-actions {
+  margin: 10px 0 0;
+}
+
+.notice-ok {
+  background: #12352a;
+  color: #9ff0d0;
+}
+
 .panel {
   display: flex;
   flex-direction: column;

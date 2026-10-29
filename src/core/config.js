@@ -19,6 +19,11 @@ export const SHARP_TURN_WINDOW = 16; // wall crossings closer than this (in indi
 export const NEAREST_SEARCH_WINDOW = 8; // nearestIndex searches hint ± this many points
 export const TRACK_PRESETS = Object.freeze(['oval', 'classic', 'technical']);
 export const DEFAULT_TRACK = 'classic';
+export const SKETCH_POINT_SPACING = 35; // editor: a drawn stroke keeps one control point per this distance
+export const SKETCH_SAMPLE_SPACING = 10; // the stroke is first resampled evenly at this distance
+export const SKETCH_SMOOTH_RADIUS = 3; // moving-average half window, in resampled points (≈ 30 units)
+export const SKETCH_SMOOTH_PASSES = Object.freeze([1, 2, 4, 8, 16]); // tried in order until no sharp turn is left
+export const SKETCH_CLOSE_DISTANCE = 120; // a stroke that comes back this close to its start is cut there
 
 // --- Spatial grid (4.4) ---
 export const GRID_CELL_SIZE = 50;
