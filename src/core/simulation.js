@@ -42,6 +42,33 @@ export function fitnessOf(car, maxSteps) {
   return laps + (car.finished ? 1 - car.finishStep / maxSteps : 0);
 }
 
+/**
+ * Simulation settings that match a brain's shape and sensors, so a population can be seeded from it.
+ * Only networks with one hidden layer and OUTPUT_COUNT outputs fit the simulation.
+ * @returns {{ hiddenNeurons: number, rayCount: number, rayRange: number, raySpread: number } | null}
+ */
+export function configForBrain(brain) {
+  const { sizes, sensor } = brain;
+  if (sizes.length !== 3 || sizes[2] !== OUTPUT_COUNT) return null;
+  return { hiddenNeurons: sizes[1], rayCount: sensor.rayCount, rayRange: sensor.rayRange, raySpread: sensor.raySpread };
+}
+
+/**
+ * Drives one car with a fixed brain (no learning) until it finishes, dies or runs out of time.
+ * Used to check how well a saved or pretrained brain generalizes to a track.
+ */
+export function driveBrain(brain, track, { maxSteps = MAX_STEPS, laps = LAPS } = {}) {
+  const car = new Car(track, { ...brain.sensor, laps });
+  let steps = 0;
+  while (car.alive && !car.finished && steps < maxSteps) {
+    car.sense();
+    const out = brain.feedForward(car.inputs);
+    car.update(out[1], out[0]); // output 0 = steer, 1 = throttle
+    steps++;
+  }
+  return { laps: car.lap, finished: car.finished, steps, deathCause: car.deathCause, lapSteps: car.lapSteps.slice() };
+}
+
 export class Simulation {
   /**
    * @param {import('./track.js').Track} track

@@ -10,13 +10,16 @@ import {
   SETTINGS_LIMITS,
 } from '../core/config.js';
 import { Track } from '../core/track.js';
-import { Simulation } from '../core/simulation.js';
+import { Simulation, configForBrain } from '../core/simulation.js';
+import { NeuralNetwork } from '../core/neuralNetwork.js';
+import { PRETRAINED_BRAIN } from '../core/pretrained.js';
 import { Renderer2D } from './renderer2d.js';
 import { FixedStepper } from './fixedStep.js';
 import { t, applyTranslations, setLocale, getLocale, DEFAULT_LOCALE } from './i18n.js';
 import { NetworkView } from './networkView.js';
 import { FitnessChart } from './chart.js';
 import { SETTING_NAMES, defaultSettings, clampSetting, formatSetting, sameSettings } from './settings.js';
+import { saveBrain, loadSavedBrain, hasSavedBrain, downloadBrain, parseBrain } from './storage.js';
 
 const MAX_SPEED_MODE = 'max';
 const PREFS_KEY = 'neurodrive.view';
@@ -52,6 +55,12 @@ const els = {
   shadowsToggle: document.getElementById('shadows-toggle'),
   applySettings: document.getElementById('btn-apply-settings'),
   settingsPending: document.getElementById('settings-pending'),
+  saveBrain: document.getElementById('btn-save-brain'),
+  loadSaved: document.getElementById('btn-load-saved'),
+  downloadBrain: document.getElementById('btn-download-brain'),
+  brainFile: document.getElementById('brain-file'),
+  loadPretrained: document.getElementById('btn-load-pretrained'),
+  brainStatus: document.getElementById('brain-status'),
 };
 
 const renderer = new Renderer2D(els.canvas);
@@ -80,9 +89,13 @@ let chartLength = -1; // history length the chart last drew
 // Training settings: `applied` runs now; `draft` is what the panel shows until "Start new training".
 let appliedSettings = defaultSettings();
 let draftSettings = { ...appliedSettings };
+const settingInputs = {}; // name -> { input, output }
+let brainMessage = null; // { key, params } shown in the brain section, re-translated on language change
 
-function newSimulation(track) {
-  sim = new Simulation(track, appliedSettings);
+/** @param {object} [sensor] ray range and spread of a loaded brain; defaults otherwise */
+function newSimulation(track, sensor = {}) {
+  sim = new Simulation(track, { ...appliedSettings, ...sensor });
+  updateBrainButtons(); // a new run has no best brain yet
   sim.onGeneration = (stats) => {
     if (stats.bestLapSteps !== null && (bestLapSteps === null || stats.bestLapSteps < bestLapSteps)) {
       bestLapSteps = stats.bestLapSteps;
@@ -215,6 +228,7 @@ function setLanguage(name) {
     if (btn.dataset.speed === MAX_SPEED_MODE) btn.textContent = t('controls.max');
   }
   if (noticeKey) els.notice.textContent = t(noticeKey);
+  if (brainMessage) showBrainMessage(brainMessage.key, brainMessage.params);
   updateStats();
   networkView.render(leaderBrain());
   chart.setHistory(sim.history);
@@ -251,6 +265,7 @@ function buildSettings() {
     });
     field.append(row, input);
     els.settingsFields.append(field);
+    settingInputs[name] = { input, output };
   }
 }
 
@@ -258,6 +273,49 @@ function applySettings() {
   appliedSettings = { ...draftSettings };
   els.settingsPending.hidden = true;
   newSimulation(Track.preset(els.trackSelect.value));
+}
+
+// Shows applied settings in the panel (after a brain changed the network size).
+function syncSettingInputs() {
+  draftSettings = { ...appliedSettings };
+  for (const name of SETTING_NAMES) {
+    settingInputs[name].input.value = String(appliedSettings[name]);
+    settingInputs[name].output.textContent = formatSetting(name, appliedSettings[name]);
+  }
+  els.settingsPending.hidden = true;
+}
+
+function showBrainMessage(key, params = {}) {
+  brainMessage = { key, params };
+  els.brainStatus.textContent = t(key, params);
+  els.brainStatus.hidden = false;
+}
+
+/**
+ * Restarts training from one brain: the network size and sensors follow the brain (the panel
+ * shows them), the population is the brain plus mutated copies.
+ */
+function startFromBrain(brain, messageKey) {
+  const shape = configForBrain(brain);
+  const fits = shape && ['hiddenNeurons', 'rayCount'].every((name) => clampSetting(name, shape[name]) === shape[name]);
+  if (!fits) {
+    showBrainMessage('brain.unsupported');
+    return;
+  }
+  appliedSettings = { ...appliedSettings, hiddenNeurons: shape.hiddenNeurons, rayCount: shape.rayCount };
+  syncSettingInputs();
+  newSimulation(Track.preset(els.trackSelect.value), { rayRange: shape.rayRange, raySpread: shape.raySpread });
+  sim.seedFrom(brain);
+  showBrainMessage(messageKey);
+  updateBrainButtons();
+}
+
+// Save and download need a finished generation; loading needs a saved brain.
+function updateBrainButtons() {
+  const ready = sim.bestBrain !== null;
+  els.saveBrain.disabled = !ready;
+  els.downloadBrain.disabled = !ready;
+  els.loadSaved.disabled = !hasSavedBrain();
 }
 
 function runSteps(frameMs) {
@@ -335,6 +393,7 @@ function frame(now) {
   activeRenderer().render(sim, view);
   if (now - lastStats >= 1000 / STATS_UPDATE_HZ) {
     updateStats();
+    updateBrainButtons();
     networkView.render(leaderBrain());
     if (sim.history.length !== chartLength) {
       chart.setHistory(sim.history);
@@ -389,6 +448,43 @@ els.shadowsToggle.addEventListener('change', () => {
 });
 
 els.applySettings.addEventListener('click', applySettings);
+
+els.saveBrain.addEventListener('click', () => {
+  if (!sim.bestBrain) showBrainMessage('brain.none');
+  else showBrainMessage(saveBrain(sim.bestBrain) ? 'brain.saved' : 'brain.saveFailed');
+  updateBrainButtons();
+});
+
+els.loadSaved.addEventListener('click', () => {
+  const brain = loadSavedBrain();
+  if (brain) startFromBrain(brain, 'brain.loadedSaved');
+  else showBrainMessage('brain.invalid');
+});
+
+els.downloadBrain.addEventListener('click', () => {
+  if (!sim.bestBrain) {
+    showBrainMessage('brain.none');
+    return;
+  }
+  const name = `neurodrive-brain-gen${sim.generation - 1}.json`;
+  downloadBrain(sim.bestBrain, name);
+  showBrainMessage('brain.downloaded', { name });
+});
+
+els.brainFile.addEventListener('change', async () => {
+  const file = els.brainFile.files[0];
+  els.brainFile.value = ''; // the same file can be chosen again
+  if (!file) return;
+  try {
+    startFromBrain(parseBrain(await file.text()), 'brain.loadedFile');
+  } catch {
+    showBrainMessage('brain.invalid');
+  }
+});
+
+els.loadPretrained.addEventListener('click', () => {
+  startFromBrain(NeuralNetwork.fromJSON(PRETRAINED_BRAIN), 'brain.loadedPretrained');
+});
 
 els.cameraSelect.addEventListener('change', () => {
   view.camera = els.cameraSelect.value;

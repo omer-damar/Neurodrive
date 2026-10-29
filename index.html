@@ -127,6 +127,26 @@
       </section>
 
       <section class="panel-section">
+        <h2 data-i18n="brain.heading"></h2>
+        <div class="button-row">
+          <button type="button" id="btn-load-pretrained" class="btn btn-primary" data-i18n="brain.loadPretrained"></button>
+        </div>
+        <div class="button-row">
+          <button type="button" id="btn-save-brain" class="btn" data-i18n="brain.save" disabled></button>
+          <button type="button" id="btn-load-saved" class="btn" data-i18n="brain.loadSaved" disabled></button>
+        </div>
+        <div class="button-row">
+          <button type="button" id="btn-download-brain" class="btn" data-i18n="brain.download" disabled></button>
+          <label class="btn file-btn">
+            <span data-i18n="brain.upload"></span>
+            <input type="file" id="brain-file" accept=".json,application/json" class="visually-hidden">
+          </label>
+        </div>
+        <p id="brain-status" class="muted hint" role="status" hidden></p>
+        <p class="muted hint" data-i18n="brain.hint"></p>
+      </section>
+
+      <section class="panel-section">
         <h2 data-i18n="settings.heading"></h2>
         <div id="settings-fields"></div>
         <label class="check">

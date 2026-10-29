@@ -1,27 +1,36 @@
 // Headless training CLI.
 // npm run train -- --track classic --generations 80 --population 100 --seed 42 --mutation-rate 0.1 --out trained/classic.json
+//   --tracks oval,classic,technical   rotate the track every generation (generalization training)
+//   --pretrained                      also write the chosen brain to src/core/pretrained.js
 import { parseArgs } from 'node:util';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 
-import { Simulation, DEFAULT_SIM_CONFIG } from '../src/core/simulation.js';
+import { Simulation, DEFAULT_SIM_CONFIG, driveBrain } from '../src/core/simulation.js';
 import { Track, PRESETS } from '../src/core/track.js';
-import { DEFAULT_TRACK, STEPS_PER_SECOND } from '../src/core/config.js';
+import { DEFAULT_TRACK, STEPS_PER_SECOND, TRACK_PRESETS, MAX_STEPS, ELITE_COUNT } from '../src/core/config.js';
+
+const PRETRAINED_PATH = 'src/core/pretrained.js';
 
 const { values } = parseArgs({
   options: {
     track: { type: 'string', default: DEFAULT_TRACK },
+    tracks: { type: 'string' },
     generations: { type: 'string', default: '50' },
     population: { type: 'string', default: String(DEFAULT_SIM_CONFIG.populationSize) },
     seed: { type: 'string', default: String(DEFAULT_SIM_CONFIG.seed) },
     'mutation-rate': { type: 'string', default: String(DEFAULT_SIM_CONFIG.mutationRate) },
     out: { type: 'string' },
+    pretrained: { type: 'boolean', default: false },
   },
 });
 
-if (!PRESETS[values.track]) {
-  console.error(`Unknown track "${values.track}". Choose one of: ${Object.keys(PRESETS).join(', ')}`);
-  process.exit(1);
+const trackNames = values.tracks ? values.tracks.split(',') : [values.track];
+for (const name of trackNames) {
+  if (!PRESETS[name]) {
+    console.error(`Unknown track "${name}". Choose one of: ${Object.keys(PRESETS).join(', ')}`);
+    process.exit(1);
+  }
 }
 const generations = Number(values.generations);
 const config = {
@@ -29,21 +38,70 @@ const config = {
   seed: Number(values.seed),
   mutationRate: Number(values['mutation-rate']),
 };
-const out = values.out ?? `trained/${values.track}-seed${config.seed}.json`;
+const label = trackNames.join('+');
+const out = values.out ?? `trained/${label}-seed${config.seed}.json`;
 
-const sim = new Simulation(Track.preset(values.track), config);
+const tracks = trackNames.map((name) => Track.preset(name));
+const presets = TRACK_PRESETS.map((name) => Track.preset(name));
+const sim = new Simulation(tracks[0], config);
+let current = 0; // index of the track the running generation uses
+
+// The saved brain is the elite that drives every preset best on its own (laps on its worst track
+// first, then the total), not the highest single-track fitness: with rotating tracks that one is
+// usually an oval specialist.
+function generalizationScore(brain) {
+  let total = 0;
+  let worst = Infinity;
+  for (const track of presets) {
+    const result = driveBrain(brain, track);
+    total += result.laps + (result.finished ? 1 - result.steps / MAX_STEPS : 0);
+    worst = Math.min(worst, result.laps);
+  }
+  return worst * 100 + total;
+}
+let champion = { brain: null, score: -Infinity, generation: 0 };
+
 const started = Date.now();
-console.log(`track=${values.track} population=${config.populationSize} seed=${config.seed} mutationRate=${config.mutationRate}`);
-console.log('gen     best      avg  finished  bestLap');
+console.log(`tracks=${label} population=${config.populationSize} seed=${config.seed} mutationRate=${config.mutationRate}`);
+console.log('gen  track         best      avg  finished  bestLap');
 sim.onGeneration = (s) => {
   const lap = s.bestLapSteps === null ? '-' : `${(s.bestLapSteps / STEPS_PER_SECOND).toFixed(2)}s`;
   console.log(
-    `${String(s.generation).padStart(3)}  ${s.best.toFixed(3).padStart(7)}  ${s.avg.toFixed(3).padStart(7)}` +
-      `  ${String(s.finishedCount).padStart(8)}  ${lap.padStart(7)}`,
+    `${String(s.generation).padStart(3)}  ${trackNames[current].padEnd(10)}  ${s.best.toFixed(3).padStart(7)}` +
+      `  ${s.avg.toFixed(3).padStart(7)}  ${String(s.finishedCount).padStart(8)}  ${lap.padStart(7)}`,
   );
+  // The next generation's first brains are this generation's elites, unchanged.
+  for (let e = 0; e < ELITE_COUNT; e++) {
+    const score = generalizationScore(sim.brains[e]);
+    if (score > champion.score) champion = { brain: sim.brains[e].clone(), score, generation: s.generation };
+  }
+  // Rotation: the next generation runs on the next track (brains are kept).
+  if (tracks.length > 1) {
+    current = s.generation % tracks.length;
+    sim.setTrack(tracks[current]);
+  }
 };
 sim.runGenerations(generations);
 
 mkdirSync(dirname(out), { recursive: true });
-writeFileSync(out, JSON.stringify(sim.bestBrain.toJSON(), null, 2) + '\n');
+writeFileSync(out, JSON.stringify(champion.brain.toJSON(), null, 2) + '\n');
 console.log(`best fitness ${sim.bestFitness.toFixed(3)} · ${((Date.now() - started) / 1000).toFixed(1)}s · saved ${out}`);
+
+// Generalization check: the chosen brain drives every preset alone, without learning.
+console.log(`check (elite of generation ${champion.generation}): preset, laps, finished, lap times`);
+for (const name of TRACK_PRESETS) {
+  const result = driveBrain(champion.brain, Track.preset(name));
+  const times = result.lapSteps.map((s, i) => ((s - (i ? result.lapSteps[i - 1] : 0)) / STEPS_PER_SECOND).toFixed(2));
+  console.log(`  ${name.padEnd(10)}  ${String(result.laps).padStart(4)}  ${String(result.finished).padStart(8)}  ${times.join(' ')}`);
+}
+
+if (values.pretrained) {
+  const info = { tracks: trackNames, generations, ...config, chosenGeneration: champion.generation };
+  const source =
+    `// Generated by scripts/train.mjs --pretrained. Do not edit by hand; retrain instead.\n` +
+    `// The brain the "Load pretrained brain" button seeds the population from.\n` +
+    `export const PRETRAINED_INFO = ${JSON.stringify(info)};\n` +
+    `export const PRETRAINED_BRAIN = ${JSON.stringify(champion.brain.toJSON())};\n`;
+  writeFileSync(PRETRAINED_PATH, source);
+  console.log(`wrote ${PRETRAINED_PATH}`);
+}

@@ -89,13 +89,36 @@ export class NeuralNetwork {
     };
   }
 
+  /** Rebuilds a network from toJSON() output; throws on an unknown version or a malformed file. */
   static fromJSON(json) {
-    if (json.version !== BRAIN_FORMAT_VERSION) throw new Error(`Unsupported brain version: ${json.version}`);
+    if (json?.version !== BRAIN_FORMAT_VERSION) throw new Error(`Unsupported brain version: ${json?.version}`);
+    validateBrainJSON(json);
     const net = new NeuralNetwork(json.sizes, null, { ...json.sensor });
     json.weights.forEach((w, l) => net.weights[l].set(w));
     json.biases.forEach((b, l) => net.biases[l].set(b));
     return net;
   }
+}
+
+// Brains also come from user files, so every shape and number is checked before use.
+function validateBrainJSON(json) {
+  const { sizes, weights, biases, sensor } = json;
+  const fail = (what) => {
+    throw new Error(`Invalid brain: ${what}`);
+  };
+  if (!Array.isArray(sizes) || sizes.length < 2 || !sizes.every((n) => Number.isInteger(n) && n > 0)) fail('sizes');
+  if (!Array.isArray(weights) || weights.length !== sizes.length - 1) fail('weights');
+  if (!Array.isArray(biases) || biases.length !== sizes.length - 1) fail('biases');
+  for (let l = 0; l < sizes.length - 1; l++) {
+    if (!isNumberArray(weights[l], sizes[l + 1] * sizes[l])) fail(`weights[${l}]`);
+    if (!isNumberArray(biases[l], sizes[l + 1])) fail(`biases[${l}]`);
+  }
+  if (!sensor || sensor.rayCount !== sizes[0] - 1) fail('sensor.rayCount');
+  if (!(sensor.rayRange > 0) || !(sensor.raySpread > 0)) fail('sensor range or spread');
+}
+
+function isNumberArray(values, length) {
+  return Array.isArray(values) && values.length === length && values.every(Number.isFinite);
 }
 
 function pick(out, a, b, rng) {
