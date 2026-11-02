@@ -89,19 +89,45 @@ bir komut her grafiği ve tabloyu yeniden üretir.
 dille açıklıyor; her deney için neden önemli olduğunu, hipotezi, tasarımı, sonuçları, yorumu ve
 sınırlılıkları veriyor.
 
-| # | Deney | Tek cümlelik sonuç |
-|---|---|---|
-| 1 | Mutasyon oranı (0,05 → 0,8) | En az orta düzeyde (≥ 0,3) mutasyon kullan; elitizm varken fazlası bir şey kaybettirmiyor. |
-| 2 | Beş görülmemiş piste genelleme | Bir beynin hiç görmediği pistleri sürebilmesini sağlayan şey çeşitli eğitim pistleri. |
-| 3 | Eğitimde keskin virajlar | Bir beyin bir viraj için ancak daha önce o keskinlikte virajlarla karşılaştıysa yavaşlıyor. |
-| 4 | Sensör sayısı (3 / 5 / 7 / 9) | Beş sensör yetiyor; fazlası genellemeyi iyileştirmek yerine kötüleştirebilir. |
-| 5 | Gürültülü sensörler (±0 → ±0,2) | Beyinler orta düzey gürültüyü kaldırıyor; gürültüyle eğitmek ölçülebilir bir fark yaratmadı. |
-| 6 | Ağ büyüklüğü (4 / 6 / 12 / 16 gizli) | Bu görevde ağın büyüklüğü önemli değil; önemli olan girdileri ve eğitimi. |
-| 7 | Nüfus mu nesil mi (aynı bütçe) | Sabit bütçeyi nesle harca: aynı beceriler, daha hızlı sürüş. |
-| 8 | Işın sayısı mı aralığı mı | Önemli olan arabanın kaç sensörü olduğu değil, aralarının ne kadar açık olduğu. |
-| 9 | Eğitim pisti sayısı (1–4) | Daha keskin virajlı ikinci bir pist, ne kadar çok olursa olsun kolay pistlerden daha değerli. |
+### Deneyler ne gösterdi?
 
-İki merkezî sonuç: dönüşümlü eğitim tek pistte eğitimden çok daha iyi genelleniyor ve hâlâ
+Sonuçlar kanıt gücüne göre gruplandı. *p*, Holm düzeltmeli permütasyon testi; δ, Cliff'in etki
+büyüklüğü (|δ| ≥ 0,474 büyük). Köşeli parantezdeki sayılar rapordaki deney numaraları.
+
+**✅ Anlamlı ve büyük etkiyle gösterilenler**
+
+| Bulgu | Kanıt |
+|---|---|
+| Genellemeyi **çeşitli eğitim** sağlıyor: tek pist 5 görülmemiş pistin 0,7'sini, dönüşümlü üç pist 3,1'ini bitiriyor [2] | p < 0,001, δ = −0,91 |
+| Beyinler **eğitimde gördüklerinden keskin** virajlarda kalıyor; böyle virajlı tek bir eğitim pisti, geçilemeyen pistleri 0/10'dan 8/10 ve 6/10 koşuya çıkarıyor [3] | p = 0,002, δ = −0,80 |
+| **Genellemenin bir bedeli var**: keskin virajla eğitilen beyinler sıradan bir pisti çok daha yavaş sürüyor, 31,5'e karşı 25,2 sn [3] | p < 0,001, δ = −1,00 |
+| Önemli olan pistlerin **sayısı değil, hangileri olduğu**: daha keskin virajlı ikinci pist kazancın tamamını veriyor, üçüncü ve dördüncü kolay pist hiçbir şey eklemiyor [9] | 1 vs 2 pist p < 0,001; 2 vs 3 vs 4 p = 1,000 |
+| **3 sensör az**: koşuların 3/10'u hiç tur atamıyor, kalanlar yaklaşık üç kat fazla nesle ihtiyaç duyuyor; 5 yeterli [4] | p < 0,001, δ ≥ 0,94 |
+| Genellemeyi ışın sayısı değil **ışın aralığı** belirliyor: 22,5°'den sık dizilmiş ışınlar 7 de olsa 9 da olsa zarar veriyor; daha geniş yayılmış 9 ışın sorunsuz [4, 8] | p ≤ 0,010, δ ≥ 0,73 |
+| Bütçe sabitken **daha çok nesil daha hızlı sürüyor** (24,62'ye karşı 25,03 sn); geçilen pistler aynı kalıyor [7] | p < 0,001, δ = −1,00 |
+| **Çok düşük mutasyon oranı** (0,05), 0,3'ten yavaş öğreniyor [1] | p = 0,044, δ = 0,61 |
+
+**❌ Deneylerin çürüttüğü hipotezler**
+
+- *"Orta düzey mutasyon oranı en iyisidir."* 0,3'ten 0,8'e kadar hiçbir şey değişmiyor; muhtemelen
+  elitizm en iyi beyni hep bozulmadan sakladığı için [1].
+- *"9 sensör, ağ aşırı uyum yaptığı için kötü genelleniyor."* İki kat fazla ağırlığı olan 16 nöronlu
+  ağ varsayılan ağ gibi genelleniyor; sebebin ışın aralığı olduğu ortaya çıktı [6, 8].
+- *"Daha çok eğitim pisti her zaman daha iyidir."* Önemli olan yalnızca eklenen pistin içeriği [9].
+- *"Daha büyük bir ağ genellemeyi değiştirir."* 4 ile 16 gizli nöron birebir aynı davranıyor [6].
+
+**〰️ 10 koşuyla gösterilemeyen eğilimler**
+
+- Güçlü sensör gürültüsü (±0,2), 10 koşunun 6'sında performansı düşürüyor, hiçbirinde artırmıyor;
+  ama düzeltme sonrası p = 0,19 [5].
+- Gürültülü sensörlerle eğitmek, gürültü altında biraz daha iyi sayılar veriyor; anlamlılıktan çok
+  uzak [5].
+
+**Büyük resim.** Bir beynin neler yapabileceğini; ne kadar büyük olduğu, kaç sensörü olduğu ya da
+ağırlıklarının ne kadar mutasyona uğradığı değil, **eğitimde neyle karşılaştığı** belirliyor. Bu,
+makine öğrenmesinin temel dersi; burada sıfırdan yazılmış bir sistemde ölçüldü.
+
+İki merkezî grafik: dönüşümlü eğitim tek pistte eğitimden çok daha iyi genelleniyor ve hâlâ
 geçemediği pistler, eğitim pistlerinden biri o keskinlikte virajlar içerince geçilebilir hale
 geliyor.
 

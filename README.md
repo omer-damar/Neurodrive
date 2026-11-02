@@ -88,19 +88,45 @@ regenerates each chart and table.
 in plain words and gives, for each experiment, why it matters, the hypothesis, the design, the
 results, their interpretation and their limitations.
 
-| # | Experiment | Result in one sentence |
-|---|---|---|
-| 1 | Mutation rate (0.05 → 0.8) | Mutate at least moderately (≥ 0.3); with elitism, more mutation costs nothing. |
-| 2 | Generalization to five unseen tracks | Varied training tracks are what make a brain drive tracks it has never seen. |
-| 3 | Sharp corners in training | A brain slows down for a corner only if it has met corners that sharp before. |
-| 4 | Number of sensors (3 / 5 / 7 / 9) | Five sensors are enough; more can make generalization worse, not better. |
-| 5 | Noisy sensors (±0 → ±0.2) | Brains tolerate moderate noise; training with noise made no measurable difference. |
-| 6 | Network size (4 / 6 / 12 / 16 hidden) | The network's size does not matter for this task; its inputs and its training do. |
-| 7 | Population vs generations (same budget) | Spend a fixed budget on generations: the same skills, driven faster. |
-| 8 | Ray count vs ray spacing | It is not how many sensors a car has but how far apart they are. |
-| 9 | Number of training tracks (1–4) | A second track with harder corners is worth more than any number of easy ones. |
+### What the experiments showed
 
-The two central results: rotating training generalizes far better than training on one track,
+Results are grouped by strength of evidence. *p* is the Holm-corrected permutation test,
+δ is Cliff's effect size (|δ| ≥ 0.474 is large); the numbers in brackets are the report's
+experiment numbers.
+
+**✅ Shown, with significant and large effects**
+
+| Finding | Evidence |
+|---|---|
+| Generalization comes from **varied training**: one track finishes 0.7 of 5 unseen tracks, three tracks in rotation 3.1 [2] | p < 0.001, δ = −0.91 |
+| Brains fail corners **sharper than any seen in training**; one training track with such corners lifts the failed tracks from 0/10 to 8/10 and 6/10 runs [3] | p = 0.002, δ = −0.80 |
+| **Generalization has a price**: brains trained on sharp corners drive an ordinary track much more slowly, 31.5 vs 25.2 s [3] | p < 0.001, δ = −1.00 |
+| What counts is **which** tracks, not how many: a second track with harder corners gives all the gain, a third and fourth easy one add nothing [9] | 1 vs 2 tracks p < 0.001; 2 vs 3 vs 4 p = 1.000 |
+| **3 sensors are too few**: 3 of 10 runs never complete a lap, the rest need about three times as many generations; 5 are enough [4] | p < 0.001, δ ≥ 0.94 |
+| **Ray spacing**, not ray count, decides generalization: rays packed closer than 22.5° hurt with 7 or 9 rays; 9 rays spread wider are fine [4, 8] | p ≤ 0.010, δ ≥ 0.73 |
+| With a fixed budget, **more generations drive faster** (24.62 vs 25.03 s), though the same tracks are passed [7] | p < 0.001, δ = −1.00 |
+| A **very low mutation rate** (0.05) learns more slowly than 0.3 [1] | p = 0.044, δ = 0.61 |
+
+**❌ Hypotheses the experiments refuted**
+
+- *"A middle mutation rate is best."* From 0.3 up to 0.8 nothing changes, probably because elitism
+  always keeps the best brain intact [1].
+- *"9 sensors generalize worse because the network overfits."* A 16-neuron network with more than
+  twice the weights generalizes like the default; the cause turned out to be the ray spacing [6, 8].
+- *"More training tracks are always better."* Only the content of the added track matters [9].
+- *"A bigger network changes generalization."* 4 to 16 hidden neurons behave identically [6].
+
+**〰️ Trends that were not shown with 10 runs**
+
+- Strong sensor noise (±0.2) lowers performance in 6 of 10 runs and raises it in none, but
+  p = 0.19 after correction [5].
+- Training with noisy sensors gives slightly better numbers under noise, far from significance [5].
+
+**The big picture.** What a brain can do is decided by **what it met in training**, not by how
+large it is, how many sensors it has or how hard its weights are mutated. This is the central
+lesson of machine learning, measured here in a system written from scratch.
+
+The two central charts: rotating training generalizes far better than training on one track,
 and the tracks it still fails become passable once a training track contains corners that sharp.
 
 ![Laps driven on five unseen tracks, one-track vs rotating training, mean ± 1 sd](docs/experiments/generalization.svg)
