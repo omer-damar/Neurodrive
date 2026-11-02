@@ -62,6 +62,7 @@ const els = {
   lastGen: document.getElementById('stat-last'),
   langButtons: document.querySelectorAll('.lang-btn'),
   networkCanvas: document.getElementById('network-canvas'),
+  networkDetail: document.getElementById('network-detail'),
   chartCanvas: document.getElementById('chart-canvas'),
   chartTooltip: document.getElementById('chart-tooltip'),
   chartEmpty: document.getElementById('chart-empty'),
@@ -84,7 +85,7 @@ const els = {
 
 const renderer = new Renderer2D(els.canvas);
 const stepper = new FixedStepper();
-const networkView = new NetworkView(els.networkCanvas);
+const networkView = new NetworkView(els.networkCanvas, els.networkDetail);
 const chart = new FitnessChart(els.chartCanvas, els.chartTooltip, els.chartEmpty);
 const view = {
   showSensors: true,

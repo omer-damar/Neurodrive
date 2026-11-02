@@ -303,6 +303,22 @@ body {
 }
 
 /* Phase 5: network view, fitness chart, settings */
+.network-detail {
+  min-height: 4.6em; /* room for the longest description, so the panel does not jump */
+  margin-top: 6px;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface-2);
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.network-detail strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
 .network-canvas {
   display: block;
   width: 100%;
