@@ -34,8 +34,8 @@ export const CORNER_WINDOW = 24; // centre points each side for sharpestTurns()
 /**
  * Validates a generalization definition (experiments/*.json with "type": "generalization").
  * Training tracks are presets or names from `trainingTracks` (control points in the file). A
- * condition may also change simulation settings (`config`, e.g. { rayCount: 3 }); the champion
- * keeps its own sensors when it drives the test tracks.
+ * condition may also change simulation settings (`config`, e.g. { rayCount: 3 }) and its number of
+ * generations; the champion keeps its own sensors when it drives the test tracks.
  * @returns {{ type: string, name: string, title: string, generations: number, population: number,
  *             seeds: number[], conditions: { name: string, label: string, tracks: string[] }[],
  *             trainingTracks: Record<string, number[][]>, testTracks: Record<string, number[][]> }}
@@ -53,6 +53,8 @@ export function parseGeneralization(json) {
     if (!c.name || !Array.isArray(c.tracks) || c.tracks.length === 0) throw new Error('A condition needs a name and tracks');
     for (const t of c.tracks) if (!PRESETS[t] && !def.trainingTracks[t]) throw new Error(`Unknown training track "${t}"`);
     c.config ??= {};
+    c.generations ??= def.generations; // a condition may train longer or shorter (budget experiments)
+    if (!(Number.isInteger(c.generations) && c.generations > 0)) throw new Error(`Condition "${c.name}" needs a positive generation count`);
     for (const key of Object.keys(c.config)) if (!VARIABLES[key]) throw new Error(`Unknown condition setting "${key}"`);
     c.label ??= c.name;
   }
@@ -111,7 +113,7 @@ export function sharpestTurns(track, window = CORNER_WINDOW) {
 export function runGeneralization(def, condition, seed, testTracks = buildTestTracks(def)) {
   const training = condition.tracks.map((name) => trainingTrack(def, name));
   const config = { seed, populationSize: def.population, ...condition.config };
-  const { champion } = trainOnTracks(training, config, def.generations);
+  const { champion } = trainOnTracks(training, config, condition.generations);
   const levels = def.testNoise ?? [0];
   let drives = 0; // gives every noisy drive its own, reproducible noise seed
   const drive = (split, name, track, testNoise) => {

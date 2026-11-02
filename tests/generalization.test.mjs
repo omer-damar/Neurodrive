@@ -158,3 +158,18 @@ test('a condition may change simulation settings, and unknown settings are rejec
   const shipped = parseGeneralization(JSON.parse(readFileSync('experiments/ray-count-generalization.json', 'utf8')));
   assert.deepEqual(shipped.conditions.map((c) => c.config.rayCount), [3, 5, 7, 9]);
 });
+
+test('a condition may train for its own number of generations', () => {
+  const def = parseGeneralization({
+    ...TINY,
+    seeds: [1],
+    conditions: [
+      { name: 'short', tracks: ['oval'], generations: 1 },
+      { name: 'default', tracks: ['oval'] },
+    ],
+  });
+  assert.deepEqual(def.conditions.map((c) => c.generations), [1, TINY.generations]);
+  const rows = runGeneralization(def, def.conditions[0], 1);
+  assert.equal(rows[0].chosenGeneration, 1, 'one generation: the champion comes from it');
+  assert.throws(() => parseGeneralization({ ...TINY, conditions: [{ name: 'x', tracks: ['oval'], generations: 0 }] }), /positive generation count/);
+});

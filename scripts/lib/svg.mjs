@@ -276,7 +276,7 @@ export function generalizationMarkdown(def, summary, corners = []) {
   const lines = [
     `# ${def.title}`,
     '',
-    `- Eğitim: ${def.generations} nesil, nüfus ${def.population}; dönüşümlü koşulda pist her nesil değişir`,
+    `- Eğitim: ${trainingBudget(def)}; dönüşümlü koşulda pist her nesil değişir`,
     ...def.conditions.map((c) => `- Koşul \`${c.name}\`: ${c.label}`),
     `- Şampiyon: her neslin elitleri arasından yalnızca kendi eğitim pistlerinde en iyi süren (test pistleri seçimde kullanılmaz)`,
     `- Test pistleri (hiçbir koşulda eğitimde yok): ${tracks.map((t) => `\`${t}\``).join(', ')}`,
@@ -304,6 +304,12 @@ export function generalizationMarkdown(def, summary, corners = []) {
     );
   }
   return lines.join('\n');
+}
+
+// "60 nesil, nüfus 100", or "koşula göre" when the conditions train with different budgets.
+function trainingBudget(def) {
+  const same = def.conditions.every((c) => c.generations === def.generations && !c.config.populationSize);
+  return same ? `${def.generations} nesil, nüfus ${def.population}` : 'nesil ve nüfus koşula göre (koşul adlarında)';
 }
 
 /** Markdown report for a noise experiment: laps per noise level on training and unseen tracks. */
@@ -346,8 +352,8 @@ export function significanceMarkdown(pairs, metric, digits = 2, { heading = 'Anl
     '| Karşılaştırma | Ortalama farkı (A − B) | p | p (Holm) | Cliff\'s δ | Etki |',
     '|---|---|---|---|---|---|',
     ...pairs.map((x) =>
-      `| ${x.a} vs ${x.b} | ${x.diff >= 0 ? '+' : '−'}${Math.abs(x.diff).toFixed(digits)} | ${formatP(x.p)} | ${formatP(x.pHolm)} | ` +
-        `${x.delta >= 0 ? '+' : '−'}${Math.abs(x.delta).toFixed(2)} | ${sizeTr[x.size]} |`),
+      `| ${x.a} vs ${x.b} | ${signed(x.diff, digits)} | ${formatP(x.p)} | ${formatP(x.pHolm)} | ` +
+        `${signed(x.delta, 2)} | ${sizeTr[x.size]} |`),
     '',
     'Nasıl okunur: *p*, iki koşul aslında aynı olsaydı en az bu kadar büyük bir farkın yalnızca şansla ' +
       'görülme olasılığıdır (iki yönlü permütasyon testi; ' +
@@ -368,8 +374,8 @@ function pairedMarkdown(pairs, metric, digits, heading, sizeTr) {
     '| Karşılaştırma | Ortalama farkı (A − B) | p | p (Holm) | Eşli δ | Etki |',
     '|---|---|---|---|---|---|',
     ...pairs.map((x) =>
-      `| ${x.a} vs ${x.b} | ${x.diff >= 0 ? '+' : '−'}${Math.abs(x.diff).toFixed(digits)} | ${formatP(x.p)} | ${formatP(x.pHolm)} | ` +
-        `${x.delta >= 0 ? '+' : '−'}${Math.abs(x.delta).toFixed(2)} | ${sizeTr[x.size]} |`),
+      `| ${x.a} vs ${x.b} | ${signed(x.diff, digits)} | ${formatP(x.p)} | ${formatP(x.pHolm)} | ` +
+        `${signed(x.delta, 2)} | ${sizeTr[x.size]} |`),
     '',
     'Nasıl okunur: *p*, eşli işaret çevirme permütasyon testinden gelir: etki yoksa her koşunun farkı eşit ' +
       'olasılıkla artı ya da eksidir, tüm işaret düzenleri sayıldı. *p (Holm)* bu tablodaki karşılaştırmalar için ' +
@@ -380,4 +386,11 @@ function pairedMarkdown(pairs, metric, digits, heading, sizeTr) {
 
 function formatP(p) {
   return p < 0.001 ? '< 0.001' : p.toFixed(3);
+}
+
+// "+0.40" / "−0.40"; values that round to zero print without a sign.
+function signed(value, digits) {
+  const text = Math.abs(value).toFixed(digits);
+  if (Number(text) === 0) return text;
+  return `${value > 0 ? '+' : '−'}${text}`;
 }

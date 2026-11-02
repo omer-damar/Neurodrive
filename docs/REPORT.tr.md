@@ -5,7 +5,7 @@
 ## Özet
 
 NeuroDrive, simüle edilen arabalara küçük bir sinir ağıyla sürmeyi öğretir; ağın ağırlıklarını
-genetik algoritma bulur. Bu rapor bu öğrenme süreci hakkında beş soru soruyor ve her birini
+genetik algoritma bulur. Bu rapor bu öğrenme süreci hakkında yedi soru soruyor ve her birini
 kontrollü, tekrar üretilebilir bir deneyle cevaplıyor: koşul başına 10 sabit tohum, her seferinde
 tek bir değişken ve her karşılaştırma için kesin permütasyon testi.
 
@@ -16,10 +16,12 @@ tek bir değişken ve her karşılaştırma için kesin permütasyon testi.
 | 3 | Bazı görülmemiş pistlerde neden hâlâ başarısızlar? | O pistlerde eğitimdekilerden keskin virajlar var. Eğitime böyle virajlı tek bir pist eklemek başarısızlıkların çoğunu gideriyor. | Geçilemeyen pistler: 0/10 → 8/10 ve 6/10 koşu; p = 0,002, δ = −0,80. |
 | 4 | Bir arabanın kaç mesafe sensörüne ihtiyacı var? | 3 yetmiyor; 5 yetiyor. 9 sensör 5–7 kadar hızlı öğreniyor ama daha kötü genelleniyor. | 3 vs ≥ 5 ışın: p < 0,001. Görülmemiş pistlerde 9 vs 5 ya da 7 ışın: p < 0,001, δ ≈ −0,9. |
 | 5 | Beyinler gürültülü sensörlere ne kadar dayanıklı? | ±0,1 gürültüye kadar dayanıklı; ±0,2'de çoğu koşuda performans düşüyor. Gürültüyle eğitmek ölçülebilir bir fark yaratmadı. | ±0,2'de düşüş: δ = +0,60, p = 0,031 (Holm sonrası 0,19). Gürültülü vs gürültüsüz eğitim: tüm p ≥ 0,21. |
+| 6 | Büyük bir ağ daha mı kötü genelleniyor? | Hayır. 4'ten 16'ya gizli nöron aynı genelleniyor ve aynı sürüyor; yani Deney 4'teki 9 sensör sonucunun sebebi ağ büyüklüğü değil. | Bütün karşılaştırmalar p = 1,000 (tur) ve ≥ 0,50 (yarış süresi). |
+| 7 | Aynı bütçe: daha çok araba mı, daha çok nesil mi? | Hangi görülmemiş pistlerin geçildiği değişmiyor; daha çok nesil sürüşü ölçülebilir biçimde hızlandırıyor. | Yarış süresi 24,62 sn (50 × 120) vs 25,03 sn (200 × 30), p < 0,001, δ = −1,00. |
 
-Ortak tema: **beynin eğitimde ne gördüğü, ne kadar görebildiğinden ya da ağırlıklarının ne kadar
-sarsıldığından daha önemli.** Çeşitli pistler ve keskin virajlar genelleme kazandırıyor; fazladan
-sensör ve fazladan mutasyon kazandırmıyor.
+Ortak tema: **beynin eğitimde ne gördüğü; ne kadar görebildiğinden, ne kadar büyük olduğundan ya da
+ağırlıklarının ne kadar sarsıldığından daha önemli.** Çeşitli pistler ve keskin virajlar genelleme
+kazandırıyor; fazladan sensör, fazladan nöron ve fazladan mutasyon kazandırmıyor.
 
 ## İçindekiler
 
@@ -30,9 +32,11 @@ sensör ve fazladan mutasyon kazandırmıyor.
 5. [Deney 3: sebep keskin virajlar mı?](#5-deney-3-sebep-keskin-virajlar-mı)
 6. [Deney 4: kaç sensör?](#6-deney-4-kaç-sensör)
 7. [Deney 5: gürültülü sensörler](#7-deney-5-gürültülü-sensörler)
-8. [Tartışma](#8-tartışma)
-9. [Geçerliliği tehdit eden etkenler](#9-geçerliliği-tehdit-eden-etkenler)
-10. [Sonuçları yeniden üretmek](#10-sonuçları-yeniden-üretmek)
+8. [Deney 6: ağ büyüklüğü](#8-deney-6-ağ-büyüklüğü)
+9. [Deney 7: nüfus mu, nesil mi?](#9-deney-7-nüfus-mu-nesil-mi)
+10. [Tartışma](#10-tartışma)
+11. [Geçerliliği tehdit eden etkenler](#11-geçerliliği-tehdit-eden-etkenler)
+12. [Sonuçları yeniden üretmek](#12-sonuçları-yeniden-üretmek)
 
 ## 1. İncelenen sistem
 
@@ -60,7 +64,8 @@ Koşullar arasında yalnızca incelenen değişken değişir; geri kalan her şe
 
 **Tutarlılık kontrolleri.** İki deneyin ortak bir koşulu olduğunda o koşul birebir aynı çıkar:
 0,3 mutasyon oranı koşuları Deney 1a ve 1b'de aynı; "üç pist dönüşümlü, 7 sensör, gürültü yok"
-koşulu Deney 2, 4b ve 5'te aynı sonucu (1,86 ± 0,19 tur) veriyor.
+koşulu (6 gizli nöron, 100 araba × 60 nesil ile) Deney 2, 4b, 5, 6 ve 7'de aynı sonucu
+(1,86 ± 0,19 tur) veriyor.
 
 **Şampiyon.** Deney 2–5 her koşudan tek bir beyni, *şampiyonu* test eder. Her nesilden sonra iki
 elitin her biri tek başına koşunun kendi eğitim pistlerinde sürülür. Bunların en zorunu en iyi
@@ -78,6 +83,12 @@ sürücüyle sürülebilir oldukları kontrol edildi; hiçbir koşula göre ayar
 | En iyi tur | Koşunun tamamında görülen en hızlı tek tur, saniye. |
 | Pistte tur (0–3) | Şampiyon pisti tek başına ve öğrenmeden, en fazla 60 sn sürer. 3, yarışı bitirdiği anlamına gelir. |
 | Bitirilen pist | Şampiyonun 3 turun hepsini tamamladığı pist sayısı. |
+| Yarış süresi (ikincil) | Deneydeki **her** koşulun **her** koşusunun bitirdiği görülmemiş pistlerde 3 turluk yarışın ortalama süresi; böylece bütün koşular aynı pistlerde ölçülür. Düşük = daha hızlı sürüş. |
+
+Yarış süresi, tur sayılarının doyduğu (neredeyse her koşunun aynı pistleri geçip aynılarında
+kaldığı) Deney 7'den sonra eklendi. Bir ölçütü tek bir sonuca göre seçmemek için, bütün genelleme
+deneylerinde yukarıdaki sabit kuralla hesaplanıyor; her koşunun bitirdiği görülmemiş bir pist
+yoksa (Deney 2 ve 4b) raporlanmıyor.
 
 **İstatistik.** Sonuçlar 10 koşunun ortalaması ± örneklem standart sapması olarak verilir. Koşullar
 arasındaki her karşılaştırma test edilir ve her test deterministiktir:
@@ -220,6 +231,12 @@ geçilir kılıyor; kolay üç pist de hemen her koşuda bitirilmeye devam ediyo
 sayısı aynı olduğu için bu, Deney 2'nin sınırlılığını da çözüyor: genellemeyi sağlayan şey yalnızca
 pist sayısı değil, viraj çeşitliliği.
 
+**Bir bedel.** Yarış süresi ölçütü keskin virajların neye mal olduğunu gösteriyor. Her koşunun
+bitirdiği tek görülmemiş pist `snake`. Keskin pistle eğitilen beyinler onu 31,51 ± 6,00 sn'de
+sürüyor, yumuşak koşul ise 25,20 ± 0,13 sn'de (p < 0,001, δ = −1,00). Çok keskin virajlar için
+sert fren yapmayı öğrenen beyinler sıradan virajları da daha temkinli sürüyor: geniş beceri
+hızdan ödenerek kazanılıyor.
+
 **Sınırlılıklar.** Keskin koşuldaki bir koşu (tohum 4), kendi dört eğitim pistinin hepsini süren
 bir beyin bulamadı ve test pistlerinde de kötüydü: keskin virajlar eğitimi zorlaştırıyor, saçılmanın
 büyük olması bundan. Keskin pist geçilemeyen virajlara göre tasarlandı; yani sonuç "bu tür virajlar
@@ -274,15 +291,18 @@ koşunun 3'ü hiç tur atamıyor, geri kalanlar da üç kat fazla nesle ihtiyaç
 yetiyor; ötesinde öğrenme hızı değişmiyor, en iyi tur yalnızca biraz iyileşiyor (9,00 → 8,71 sn).
 Hipotez (b) ise **çürüdü**: 9 ışınlı beyinler kendi eğitim pistlerini kusursuz sürüyor, ama 5 ya
 da 7 ışınlılardan daha kötü genelleniyor. Bunun neredeyse tamamı `snake` pistinden geliyor (10
-koşunun 1'inde bitiş, diğerlerinde 10'da 10). Burada test edilmemiş ama makul bir açıklama aşırı
-uyum (overfitting): 10 girdi, ağa genel bir sürüş kuralı yerine eğitim pistlerinin kendine özgü
-şekillerine uyum sağlayacak daha çok ağırlık veriyor.
+koşunun 1'inde bitiş, diğerlerinde 10'da 10). İlk akla gelen açıklama aşırı uyumdu (overfitting):
+10 girdi, ağa eğitim pistlerinin kendine özgü şekillerine uyum sağlayacak daha çok ağırlık veriyor.
+**Deney 6 bunu test etti ve desteklemedi:** 9 sensörlü ağdan çok daha fazla ağırlığı olan ağlar
+varsayılan ağ kadar iyi genelleniyor. Geriye kalan açıklama, sıklaşan ışın yelpazesinin yolu nasıl
+temsil ettiği; bu hâlâ açık bir soru.
 
 **Sınırlılıklar.** Yelpaze genişliği sabit tutuldu; yani "daha çok ışın" aynı zamanda "birbirine
 daha yakın ışınlar" demek. Hiç tur atamayan 3 ışınlı koşular öğrenme hızı karşılaştırmasının
 dışında kalıyor; bu 3 ışını olduğundan iyi gösteriyor, ama fark yine de anlamlı.
 
-**Tek cümleyle:** beş sensör yetiyor; daha fazlası genellemeyi iyileştirmek yerine kötüleştirebilir.
+**Tek cümleyle:** beş sensör yetiyor; daha fazlası genellemeyi iyileştirmek yerine kötüleştirebilir,
+ve bunun sebebi ağ büyüklüğü değil.
 
 ## 7. Deney 5: gürültülü sensörler
 
@@ -337,22 +357,107 @@ görmek için daha büyük örneklemler gerekir.
 **Tek cümleyle:** beyinler orta düzey sensör gürültüsünü kaldırıyor; yüksek gürültüde
 başarısızlaşmaya başlıyorlar ve gürültüyle eğitmek ölçülebilir bir fark yaratmadı.
 
-## 8. Tartışma
+## 8. Deney 6: ağ büyüklüğü
+
+**Neden önemli.** Deney 4 aday bir açıklama bıraktı: belki 9 sensörlü ağ daha çok ağırlığı olduğu
+için eğitim pistlerine aşırı uyum sağlıyor ve bu yüzden kötü genelleniyor. Bu doğruysa, çok daha
+fazla ağırlık ekleyen büyük bir gizli katman da genellemeyi bozmalı. Ağ büyüklüğü ayrıca her sinir
+ağı için en yaygın ayar sorusu.
+
+**Hipotez.** Büyük ağlar görülmemiş pistlere daha kötü genellenir (aşırı uyum açıklaması).
+
+**Tasarım.** 4, 6 (varsayılan), 12 ya da 16 gizli nöron; 7 sensör ve Deney 2'deki gibi 60 nesil
+dönüşümlü eğitim. Ağların 46, 68, 134 ve 178 ağırlığı var; Deney 4'teki 9 sensörlü ağın 80.
+
+**Sonuçlar.**
+
+![Deney 6: 4, 6, 12 ve 16 gizli nöron için beş görülmemiş pistte atılan tur](experiments/network-size.svg)
+
+| Gizli nöron | Ağırlık | Görülmemiş pist başına tur | Bitirilen pist (5 üzerinden) | `square`, `snake`, `bean`'de yarış süresi (sn) |
+|---|---|---|---|---|
+| 4 | 46 | 1,80 ± 0,00 | 3,0 ± 0,0 | 25,23 ± 0,14 |
+| 6 | 68 | 1,86 ± 0,19 | 3,1 ± 0,3 | 25,20 ± 0,17 |
+| 12 | 134 | 1,86 ± 0,19 | 3,1 ± 0,3 | 25,24 ± 0,17 |
+| 16 | 178 | 1,80 ± 0,00 | 3,0 ± 0,0 | 25,20 ± 0,09 |
+
+Bütün ikili karşılaştırmalar: tur p = 1,000, yarış süresi p ≥ 0,50 (Holm p = 1,000), |δ| ≤ 0,28.
+
+**Yorum.** Burada ağ büyüklüğü hiçbir fark yaratmıyor: her boyut eğitim pistlerini kusursuz
+öğreniyor, aynı görülmemiş pistleri geçiyor ve onları aynı hızda sürüyor. Hipotez
+**desteklenmiyor**; onunla birlikte Deney 4'ün aşırı uyum açıklaması da düşüyor: 16 nöronlu ağın
+ağırlığı 9 sensörlü ağın iki katından fazla, ama varsayılan ağ gibi genelleniyor. 9 sensörün
+zayıflığı, girdileri işleyen ağırlıkların sayısından değil, girdilerin ne olduğundan
+kaynaklanıyor olmalı. Bu görev için 4 gizli nöron bile yeterli kapasite.
+
+**Sınırlılıklar.** Bütün boyutlar için nesil sayısı eşit; büyük bir ağın arama alanı daha büyük
+ve daha uzun eğitimden fayda görebilir. Buradaki "fark yok", 10 koşuyla bir fark bulunamadığı
+anlamına geliyor.
+
+**Tek cümleyle:** bu görevde ağın büyüklüğü önemli değil; önemli olan girdileri ve eğitimi.
+
+## 9. Deney 7: nüfus mu, nesil mi?
+
+**Neden önemli.** Her genetik algoritma hesaplama bütçesini nüfus × nesil olarak harcar. Bu bütçe
+az nesil boyunca çok araba (geniş arama) için mi, çok nesil boyunca az araba (uzun cilalama) için
+mi harcanmalı? Cevap, eğitimin nasıl kurulacağına yön verir.
+
+**Hipotez.** Bütçe sabitken, nüfus ile nesil arasındaki paylaşım şampiyonların ne kadar iyi
+genellendiğini değiştirir.
+
+**Tasarım.** Koşu başına 6.000 araba değerlendirmesi, üç farklı paylaşımla: 50 araba × 120 nesil,
+100 × 60 (varsayılan) ve 200 × 30. Dönüşümlü eğitim, beş görülmemiş pist, tohumlar 1–10.
+
+**Sonuçlar.**
+
+![Deney 7: aynı bütçeyi harcamanın üç yolu için beş görülmemiş pistte atılan tur](experiments/population-budget.svg)
+
+| Paylaşım | Görülmemiş pist başına tur | Bitirilen pist (5 üzerinden) | `snake`, `bean`'de yarış süresi (sn) |
+|---|---|---|---|
+| 50 araba × 120 nesil | 1,74 ± 0,19 | 2,9 ± 0,3 | **24,62 ± 0,03** |
+| 100 araba × 60 nesil | 1,86 ± 0,19 | 3,1 ± 0,3 | 24,76 ± 0,18 |
+| 200 araba × 30 nesil | 1,86 ± 0,19 | 3,1 ± 0,3 | 25,03 ± 0,17 |
+
+| Yarış süresi karşılaştırması | Fark | p (Holm) | Cliff's δ |
+|---|---|---|---|
+| 50 × 120 vs 100 × 60 | −0,14 sn | **0,016** | −0,54 (büyük) |
+| 50 × 120 vs 200 × 30 | −0,41 sn | **< 0,001** | −1,00 (büyük) |
+| 100 × 60 vs 200 × 30 | −0,27 sn | **0,009** | −0,73 (büyük) |
+
+Görülmemiş pist başına tur: anlamlı fark yok (Holm sonrası p = 1,000).
+
+**Yorum.** Genelleme açısından hipotez desteklenmiyor: her paylaşım aynı üç görülmemiş pisti geçiyor,
+aynı ikisinde kalıyor; çünkü bunu belirleyen bütçe değil, eğitimde görülen virajlar (Deney 3). 100
+ve 200 arabalı koşulların tur sayıları tesadüfen bile aynı: ikisi de üçgeni tam olarak bir koşuda
+geçti. Bütçe ise sürüşün *kalitesini* değiştiriyor: nesil sayısı arttıkça şampiyonlar, üstesinden
+gelebildikleri görülmemiş pistleri daha hızlı sürüyor. 200 × 30'dan 50 × 120'ye yaklaşık %1,6'lık
+bir iyileşme var ve her çift arasında etki büyük ve anlamlı. Uzun cilalama sürüşü parlatıyor; geniş
+arama yeni beceri eklemiyor.
+
+**Sınırlılıklar.** Daha çok nesil, şampiyonu seçmek için daha çok fırsat da demek (her nesilde bir
+kontrol); bu da etkiye katkıda bulunabilir. Mutlak kazanç küçük. Yarış süresi, Bölüm 2'de anlatılan
+ikincil ölçüt.
+
+**Tek cümleyle:** bütçe sabitse onu nesle harca: aynı becerileri daha hızlı sürüşle elde edersin.
+
+## 10. Tartışma
 
 Birlikte ele alındığında deneyler, bu tür bir nöroevrimin neyi öğrendiğini anlatıyor:
 
 - **Genellemeyi kapasite değil, deneyim belirliyor.** Çeşitli eğitim pistleri (Deney 2) ve
-  özellikle çeşitli virajlar (Deney 3), yeni pistleri sürebilen beyinler üretiyor. Ağa daha çok
-  girdi vermek (Deney 4) tersini yaptı. Bu, makine öğrenmesinin temel dersiyle örtüşüyor: bir model
-  eğitim verisinin kapsadığı şeylere genellenir; çeşitlilik eklemeden kapasite eklemek aşırı uyumu
-  davet eder.
+  özellikle çeşitli virajlar (Deney 3), yeni pistleri sürebilen beyinler üretiyor. Daha büyük bir
+  ağ hiçbir şeyi değiştirmedi (Deney 6); daha sık bir sensör yelpazesi ise genellemeyi ağ
+  büyüklüğüyle ilgisi olmayan bir sebeple kötüleştirdi (Deney 4). Bu, makine öğrenmesinin temel
+  dersiyle örtüşüyor: bir model eğitim verisinin kapsadığı şeylere genellenir.
+- **Genellemenin bir bedeli var.** Çok keskin virajlarla başa çıkmayı öğrenen beyinler sıradan
+  pistleri daha yavaş sürüyor (Deney 3). Genişlik ve hız ters yönlere çekiyor.
 - **Arama sağlam.** Elitizm sayesinde genetik algoritma 0,3'ten 0,8'e kadar mutasyon oranlarını hız
   ya da son kaliteden ödün vermeden kaldırdı (Deney 1). Öğrenilen stratejiler de orta düzey sensör
-  gürültüsüne dayandı (Deney 5). Yöntemin ayarı affedici.
+  gürültüsüne dayandı (Deney 5). Yöntemin ayarı affedici; bir seçim yapılacaksa, daha çok nesil
+  sürüşü daha büyük bir nüfustan daha çok cilalıyor (Deney 7).
 - **Girdilerde kesin sınırlar var.** Üç ışın, en zor preseti güvenilir biçimde öğrenmeye yetmiyor
   (Deney 4); algı, üç ile beş ışın arasında bir yerde yeterli hale geliyor.
 
-## 9. Geçerliliği tehdit eden etkenler
+## 11. Geçerliliği tehdit eden etkenler
 
 - **Örneklem büyüklüğü.** Koşul başına on koşu büyük etkileri güvenilir biçimde yakalar, ama
   küçükleri kaçırabilir. Anlamlı çıkmayan sonuçlar "etki yok" değil, "gösterilemedi" olarak
@@ -362,12 +467,14 @@ Birlikte ele alındığında deneyler, bu tür bir nöroevrimin neyi öğrendiğ
 - **Elle tasarlanan pistler.** Görülmemiş test pistleri ve dördüncü eğitim pistleri yazar
   tarafından tasarlandı. Hiçbir koşula göre ayarlanmadılar, ama farklı şekiller sayıları
   değiştirebilir.
-- **Tek mimari.** Bütün deneyler 6 nöronlu tek gizli katman, 100 nüfus ve 60 (ya da 50) nesil
-  kullanıyor. Daha büyük ağlar ya da daha uzun eğitim farklı davranabilir.
+- **Tek mimari.** Deney 6 ve 7 dışında bütün deneyler 6 nöronlu tek gizli katman, 100 nüfus ve 60
+  (ya da 50) nesil kullanıyor. Daha derin ağlar ya da çok daha uzun eğitim farklı davranabilir.
+- **Sonradan eklenen bir ölçüt.** Yarış süresi (Bölüm 2), Deney 7'nin doymuş tur sayıları
+  görüldükten sonra eklendi. Her deneye sabit bir kuralla uygulanıyor, ama önceden planlanmamıştı.
 - **Basit bir dünya.** Fizik bilinçli olarak basit ve deterministik. Sonuçlar bu simülatördeki
   öğrenmeyi anlatıyor, gerçek araçları değil.
 
-## 10. Sonuçları yeniden üretmek
+## 12. Sonuçları yeniden üretmek
 
 Her deney `experiments/` altındaki bir dosyayla tanımlanır; ham verisini
 `experiments/results/*.csv`'ye yazar, grafiğini ve tam tablosunu `docs/experiments/` altında
@@ -382,6 +489,8 @@ yeniden üretir. Aynı komut her zaman aynı dosyaları üretir.
 | 4a. Sensörler, öğrenme | `npm run experiment -- experiments/ray-count.json` | ≈ 5 dk |
 | 4b. Sensörler, genelleme | `npm run experiment -- experiments/ray-count-generalization.json` | ≈ 10 dk |
 | 5. Sensör gürültüsü | `npm run experiment -- experiments/sensor-noise.json` | ≈ 5 dk |
+| 6. Ağ büyüklüğü | `npm run experiment -- experiments/network-size.json` | ≈ 10 dk |
+| 7. Nüfus mu, nesil mi | `npm run experiment -- experiments/population-budget.json` | ≈ 10 dk |
 
 Bir grafiği ve tablosunu yeniden eğitmeden, mevcut CSV'den yeniden çizmek için:
 `npm run plot -- experiments/<ad>.json`.

@@ -23,7 +23,7 @@ import {
   noiseMarkdown,
   significanceMarkdown,
 } from './lib/svg.mjs';
-import { LAPS } from '../src/core/config.js';
+import { LAPS, STEPS_PER_SECOND } from '../src/core/config.js';
 
 const VALUE_LABELS = {
   mutationRate: (v) => `oran ${v}`,
@@ -80,7 +80,7 @@ export function plotGeneralization(def, rows) {
   ];
   const svg = generalizationChartSVG(summary, {
     title: def.title,
-    subtitle: `${def.generations} nesil eğitim · ${Object.keys(def.testTracks).length} test pisti hiçbir koşulda eğitimde yok · koşul başına ${def.seeds.length} tohum · ortalama ± 1 sd`,
+    subtitle: `${sameBudget(def) ? `${def.generations} nesil eğitim` : 'nüfus ve nesil koşula göre'} · ${Object.keys(def.testTracks).length} test pisti hiçbir koşulda eğitimde yok · koşul başına ${def.seeds.length} tohum · ortalama ± 1 sd`,
     yLabel: 'Öğrenmeden atılan tur',
     allLabel: 'tümü',
     maxLaps: LAPS,
@@ -90,8 +90,13 @@ export function plotGeneralization(def, rows) {
   writeFileSync(paths.svg, svg);
   // Significance: each run's mean laps over the unseen test tracks.
   const pairs = compareGroups(def.conditions.map((c) => ({ label: c.label, values: perRunMean(rows, c.name, 'test') })));
-  writeFileSync(paths.md, `${generalizationMarkdown(def, summary, corners)}
-${significanceMarkdown(pairs, 'koşu başına görülmemiş pistlerdeki ortalama tur')}`);
+  const sections = [
+    generalizationMarkdown(def, summary, corners),
+    significanceMarkdown(pairs, 'koşu başına görülmemiş pistlerdeki ortalama tur'),
+  ];
+  const time = raceTimeSection(def, rows);
+  if (time) sections.push(time);
+  writeFileSync(paths.md, sections.join('\n'));
   return { paths, summary, pairs };
 }
 
@@ -149,6 +154,42 @@ function plotNoise(def, rows) {
     }),
   ].join('\n'));
   return { paths, summary, pairs, effect };
+}
+
+// Secondary measure for when lap counts saturate: how fast the champions drive. Only unseen tracks
+// that every run of every condition finished are used, so every run is timed on the same tracks.
+function raceTimeSection(def, rows) {
+  const test = rows.filter((r) => r.split === 'test');
+  const common = Object.keys(def.testTracks).filter((track) => test.filter((r) => r.track === track).every((r) => r.finished));
+  if (common.length === 0) return null;
+  const groups = def.conditions.map((c) => {
+    const runs = groupBy(test.filter((r) => r.condition === c.name && common.includes(r.track)), (r) => r.seed);
+    return { label: c.label, values: [...runs.values()].map((run) => run.reduce((s, r) => s + r.steps, 0) / run.length / STEPS_PER_SECOND) };
+  });
+  const lines = [
+    '## Yarış süresi (ikincil ölçüt)',
+    '',
+    `Her koşunun her koşulda bitirdiği görülmemiş pistler: ${common.map((t) => `\`${t}\``).join(', ')}. ` +
+      'Bu pistlerde 3 turluk yarışın ortalama süresi (sn); düşük = daha hızlı sürüş.',
+    '',
+    '| Koşul | Yarış süresi (sn) |',
+    '|---|---|',
+    ...groups.map((g) => {
+      const m = g.values.reduce((a, b) => a + b, 0) / g.values.length;
+      const sd = Math.sqrt(g.values.reduce((a, v) => a + (v - m) ** 2, 0) / Math.max(1, g.values.length - 1));
+      return `| ${g.label} | ${m.toFixed(2)} ± ${sd.toFixed(2)} |`;
+    }),
+    '',
+  ];
+  const stats = significanceMarkdown(compareGroups(groups), 'koşu başına ortak bitirilen pistlerdeki yarış süresi (sn)', 2, {
+    heading: 'Yarış süresinin anlamlılığı',
+  });
+  return `${lines.join('\n')}\n${stats}`;
+}
+
+// True when every condition trains with the experiment's own population and generation count.
+function sameBudget(def) {
+  return def.conditions.every((c) => c.generations === def.generations && !c.config.populationSize);
 }
 
 // Per run (seed) of one condition: mean laps over the rows of one split, in seed order.

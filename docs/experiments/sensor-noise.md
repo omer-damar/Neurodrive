@@ -23,7 +23,7 @@ Karşılaştırılan ölçüt: koşu başına eğitim pistlerindeki ortalama tur
 | Gürültüsüz eğitim @ ±0 vs @ ±0.1 | +0.20 | 0.250 | 1.000 | +0.30 | küçük |
 | Gürültüsüz eğitim @ ±0 vs @ ±0.2 | +0.53 | 0.031 | 0.188 | +0.60 | büyük |
 | Gürültüyle eğitim (±0.1) @ ±0 vs @ ±0.05 | +0.07 | 1.000 | 1.000 | +0.10 | ihmal edilebilir |
-| Gürültüyle eğitim (±0.1) @ ±0 vs @ ±0.1 | +0.00 | 1.000 | 1.000 | +0.00 | ihmal edilebilir |
+| Gürültüyle eğitim (±0.1) @ ±0 vs @ ±0.1 | 0.00 | 1.000 | 1.000 | 0.00 | ihmal edilebilir |
 | Gürültüyle eğitim (±0.1) @ ±0 vs @ ±0.2 | +0.40 | 0.031 | 0.188 | +0.60 | büyük |
 
 Nasıl okunur: *p*, eşli işaret çevirme permütasyon testinden gelir: etki yoksa her koşunun farkı eşit olasılıkla artı ya da eksidir, tüm işaret düzenleri sayıldı. *p (Holm)* bu tablodaki karşılaştırmalar için düzeltilmiştir. *Eşli δ*, A'nın B'den büyük olduğu koşuların oranı eksi küçük olduğu koşuların oranıdır (−1…+1).
@@ -34,7 +34,7 @@ Karşılaştırılan ölçüt: her test gürültüsünde, koşu başına eğitim
 
 | Karşılaştırma | Ortalama farkı (A − B) | p | p (Holm) | Cliff's δ | Etki |
 |---|---|---|---|---|---|
-| Gürültüsüz eğitim @ ±0 vs Gürültüyle eğitim (±0.1) @ ±0 | +0.00 | 1.000 | 1.000 | +0.00 | ihmal edilebilir |
+| Gürültüsüz eğitim @ ±0 vs Gürültüyle eğitim (±0.1) @ ±0 | 0.00 | 1.000 | 1.000 | 0.00 | ihmal edilebilir |
 | Gürültüsüz eğitim @ ±0.05 vs Gürültüyle eğitim (±0.1) @ ±0.05 | −0.03 | 1.000 | 1.000 | −0.09 | ihmal edilebilir |
 | Gürültüsüz eğitim @ ±0.1 vs Gürültüyle eğitim (±0.1) @ ±0.1 | −0.20 | 0.211 | 0.842 | −0.30 | küçük |
 | Gürültüsüz eğitim @ ±0.2 vs Gürültüyle eğitim (±0.1) @ ±0.2 | −0.13 | 0.662 | 1.000 | −0.10 | ihmal edilebilir |

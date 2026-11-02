@@ -45,3 +45,22 @@ Karşılaştırılan ölçüt: koşu başına görülmemiş pistlerdeki ortalama
 | Presetler + yumuşak virajlı pist vs Presetler + keskin virajlı pist | −0.74 | 0.002 | 0.002 | −0.80 | büyük |
 
 Nasıl okunur: *p*, iki koşul aslında aynı olsaydı en az bu kadar büyük bir farkın yalnızca şansla görülme olasılığıdır (iki yönlü permütasyon testi; koşular arasındaki tüm olası yeniden etiketlemeler sayıldı, yani kesin). *p (Holm)*, aynı raporda birden çok karşılaştırma yapıldığı için düzeltilmiş değerdir; 0.05'in altı geleneksel olarak anlamlı sayılır. *Cliff's δ*, A'dan rastgele bir koşunun B'den rastgele bir koşudan büyük olma olasılığı eksi küçük olma olasılığıdır (−1…+1); |δ| ≥ 0.474 büyük etki sayılır.
+
+## Yarış süresi (ikincil ölçüt)
+
+Her koşunun her koşulda bitirdiği görülmemiş pistler: `snake`. Bu pistlerde 3 turluk yarışın ortalama süresi (sn); düşük = daha hızlı sürüş.
+
+| Koşul | Yarış süresi (sn) |
+|---|---|
+| Presetler + yumuşak virajlı pist | 25.20 ± 0.13 |
+| Presetler + keskin virajlı pist | 31.51 ± 6.00 |
+
+## Yarış süresinin anlamlılığı
+
+Karşılaştırılan ölçüt: koşu başına ortak bitirilen pistlerdeki yarış süresi (sn). Her koşu bir gözlem (koşul başına bir değer listesi).
+
+| Karşılaştırma | Ortalama farkı (A − B) | p | p (Holm) | Cliff's δ | Etki |
+|---|---|---|---|---|---|
+| Presetler + yumuşak virajlı pist vs Presetler + keskin virajlı pist | −6.31 | < 0.001 | < 0.001 | −1.00 | büyük |
+
+Nasıl okunur: *p*, iki koşul aslında aynı olsaydı en az bu kadar büyük bir farkın yalnızca şansla görülme olasılığıdır (iki yönlü permütasyon testi; koşular arasındaki tüm olası yeniden etiketlemeler sayıldı, yani kesin). *p (Holm)*, aynı raporda birden çok karşılaştırma yapıldığı için düzeltilmiş değerdir; 0.05'in altı geleneksel olarak anlamlı sayılır. *Cliff's δ*, A'dan rastgele bir koşunun B'den rastgele bir koşudan büyük olma olasılığı eksi küçük olma olasılığıdır (−1…+1); |δ| ≥ 0.474 büyük etki sayılır.

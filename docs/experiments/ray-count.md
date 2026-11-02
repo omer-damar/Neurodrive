@@ -21,7 +21,7 @@ Karşılaştırılan ölçüt: ilk tura kadar geçen nesil (hiç tur atamayan ko
 | 3 ışın vs 5 ışın | +18.5 | < 0.001 | < 0.001 | +0.99 | büyük |
 | 3 ışın vs 7 ışın | +18.5 | < 0.001 | < 0.001 | +0.94 | büyük |
 | 3 ışın vs 9 ışın | +19.4 | < 0.001 | < 0.001 | +1.00 | büyük |
-| 5 ışın vs 7 ışın | +0.0 | 1.000 | 1.000 | +0.05 | ihmal edilebilir |
+| 5 ışın vs 7 ışın | 0.0 | 1.000 | 1.000 | +0.05 | ihmal edilebilir |
 | 5 ışın vs 9 ışın | +0.9 | 0.642 | 1.000 | +0.07 | ihmal edilebilir |
 | 7 ışın vs 9 ışın | +0.9 | 0.683 | 1.000 | +0.10 | ihmal edilebilir |
 

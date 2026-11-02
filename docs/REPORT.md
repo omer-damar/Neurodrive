@@ -5,7 +5,7 @@
 ## Abstract
 
 NeuroDrive trains simulated cars to drive with a small neural network whose weights are found by a
-genetic algorithm. This report asks five questions about that learning process and answers each
+genetic algorithm. This report asks seven questions about that learning process and answers each
 with a controlled, reproducible experiment: 10 fixed random seeds per condition, one variable
 changed at a time, and exact permutation tests for every comparison.
 
@@ -16,10 +16,12 @@ changed at a time, and exact permutation tests for every comparison.
 | 3 | Why do they still fail some unseen tracks? | Those tracks contain corners sharper than any in training. Adding one track with such corners fixes most failures. | Failed tracks: 0/10 → 8/10 and 6/10 runs finished; p = 0.002, δ = −0.80. |
 | 4 | How many distance sensors does a car need? | 3 are not enough; 5 are. 9 sensors learn as fast as 5–7 but generalize worse. | 3 vs ≥ 5 rays: p < 0.001. 9 vs 5 or 7 rays on unseen tracks: p < 0.001, δ ≈ −0.9. |
 | 5 | How robust are the brains to noisy sensors? | Robust up to ±0.1 noise; at ±0.2 performance drops in most runs. Training with noise did not measurably help. | Drop at ±0.2: δ = +0.60, p = 0.031 (0.19 after Holm). Noisy vs exact training: all p ≥ 0.21. |
+| 6 | Does a bigger network generalize worse? | No. 4 to 16 hidden neurons generalize and drive identically, so Experiment 4's 9-sensor result is not caused by network size. | All comparisons p = 1.000 (laps) and ≥ 0.50 (race time). |
+| 7 | Same budget: more cars or more generations? | Which unseen tracks are passed does not change; more generations make the driving measurably faster. | Race time 24.62 s (50 × 120) vs 25.03 s (200 × 30), p < 0.001, δ = −1.00. |
 
-The common thread: **what the brain has seen in training matters more than how much it can see
-or how its weights are perturbed.** Varied tracks and sharp corners in training buy
-generalization; extra sensors and extra mutation do not.
+The common thread: **what the brain has seen in training matters more than how much it can see,
+how large it is, or how its weights are perturbed.** Varied tracks and sharp corners in training
+buy generalization; extra sensors, extra neurons and extra mutation do not.
 
 ## Contents
 
@@ -30,9 +32,11 @@ generalization; extra sensors and extra mutation do not.
 5. [Experiment 3: is it the sharp corners?](#5-experiment-3-is-it-the-sharp-corners)
 6. [Experiment 4: how many sensors?](#6-experiment-4-how-many-sensors)
 7. [Experiment 5: noisy sensors](#7-experiment-5-noisy-sensors)
-8. [Discussion](#8-discussion)
-9. [Threats to validity](#9-threats-to-validity)
-10. [Reproducing the results](#10-reproducing-the-results)
+8. [Experiment 6: network size](#8-experiment-6-network-size)
+9. [Experiment 7: population or generations?](#9-experiment-7-population-or-generations)
+10. [Discussion](#10-discussion)
+11. [Threats to validity](#11-threats-to-validity)
+12. [Reproducing the results](#12-reproducing-the-results)
 
 ## 1. The system under study
 
@@ -60,7 +64,8 @@ Only the variable under study changes between conditions; everything else stays 
 
 **Consistency checks.** Where two experiments share a condition, they reproduce it exactly: the
 mutation rate 0.3 runs are identical in Experiments 1a and 1b, and the "three tracks in rotation,
-7 sensors, no noise" condition gives the same 1.86 ± 0.19 laps in Experiments 2, 4b and 5.
+7 sensors, 6 hidden neurons, 100 cars × 60 generations, no noise" condition gives the same
+1.86 ± 0.19 laps in Experiments 2, 4b, 5, 6 and 7.
 
 **Champion.** Experiments 2–5 test one brain per run, its *champion*: after each generation the
 two elites are each driven alone on the run's own training tracks, and the brain that drives the
@@ -78,6 +83,12 @@ simple scripted driver; they were not tuned to any condition.
 | Best lap | The fastest single lap seen in the whole run, in seconds. |
 | Laps on a track (0–3) | The champion drives a track once, alone and without learning, for at most 60 s. 3 means it finished the race. |
 | Tracks finished | How many tracks the champion completed all 3 laps on. |
+| Race time (secondary) | Mean time of the 3-lap race on the unseen tracks that **every** run of **every** condition in the experiment finished, so all runs are timed on the same tracks. Lower = faster driving. |
+
+The race time was added after Experiment 7, where the lap counts saturated (nearly every run
+passes the same tracks and fails the same ones). To avoid choosing a measure to fit one result, it
+is computed by the fixed rule above for every generalization experiment; where no unseen track is
+finished by every run (Experiments 2 and 4b), it is not reported.
 
 **Statistics.** Results are reported as mean ± sample standard deviation over the 10 runs. Every
 comparison between conditions is tested, and every test is deterministic:
@@ -221,6 +232,12 @@ Because the number of tracks is the same in both conditions, this also resolves 
 Experiment 2: it is the variety of corners, not merely the number of tracks, that drives
 generalization.
 
+**A cost.** The race-time measure shows what the sharp corners cost. The only unseen track every
+run finished is `snake`; brains trained with the sharp track drive it in 31.51 ± 6.00 s, against
+25.20 ± 0.13 s for the mild condition (p < 0.001, δ = −1.00). Having learned to brake hard for
+very sharp corners, they also drive ordinary corners more cautiously: broader skill is bought with
+speed.
+
 **Limitations.** One run of the sharp condition (seed 4) never found a brain that drives all four
 of its own training tracks and did poorly on the test tracks too: sharp corners make training
 harder, which is why the spread is larger. The sharp track was designed to match the failed
@@ -275,16 +292,18 @@ that 3 of 10 runs never complete a lap, and the rest need three times as many ge
 rays are enough; beyond that, learning speed does not change and the best lap improves only
 slightly (9.00 → 8.71 s). Hypothesis (b) is **contradicted**: 9-ray brains drive their own
 training tracks perfectly but generalize worse than 5- or 7-ray brains, almost entirely because
-they fail the `snake` track (1 of 10 runs finished, against 10 of 10). A plausible explanation,
-not tested here, is overfitting: 10 inputs give the network more weights with which to fit the
-specific shapes of the training tracks instead of a general driving rule.
+they fail the `snake` track (1 of 10 runs finished, against 10 of 10). A first explanation was
+overfitting: 10 inputs give the network more weights with which to fit the specific shapes of the
+training tracks. **Experiment 6 tested this and did not support it:** networks with far more
+weights than the 9-sensor one generalize as well as the default. What remains is how the denser
+ray fan represents the road; this is an open question.
 
 **Limitations.** The fan width was kept fixed, so "more rays" also means "rays closer together".
 The 3-ray runs that never lapped are left out of the learning-speed comparison, which makes 3 rays
 look better than they are; the difference is significant anyway.
 
 **In one sentence:** five sensors are enough, and more sensors can make generalization worse, not
-better.
+better, for a reason that is not network size.
 
 ## 7. Experiment 5: noisy sensors
 
@@ -340,22 +359,111 @@ if they exist.
 **In one sentence:** the brains tolerate moderate sensor noise; at high noise they start to fail,
 and training with noise made no measurable difference.
 
-## 8. Discussion
+## 8. Experiment 6: network size
+
+**Why it matters.** Experiment 4 left a candidate explanation: perhaps the 9-sensor network
+generalizes worse because it has more weights and overfits its training tracks. If that is true,
+a larger hidden layer, which adds far more weights, should hurt generalization too. Network size
+is also the most common tuning question for any neural network.
+
+**Hypothesis.** Larger networks generalize worse to unseen tracks (the overfitting explanation).
+
+**Design.** 4, 6 (default), 12 or 16 hidden neurons, with 7 sensors and rotating training for 60
+generations, as in Experiment 2. The networks have 46, 68, 134 and 178 weights; the 9-sensor
+network of Experiment 4 has 80.
+
+**Results.**
+
+![Experiment 6: laps on five unseen tracks for 4, 6, 12 and 16 hidden neurons](experiments/network-size.svg)
+
+| Hidden neurons | Weights | Laps per unseen track | Tracks finished (of 5) | Race time on `square`, `snake`, `bean` (s) |
+|---|---|---|---|---|
+| 4 | 46 | 1.80 ± 0.00 | 3.0 ± 0.0 | 25.23 ± 0.14 |
+| 6 | 68 | 1.86 ± 0.19 | 3.1 ± 0.3 | 25.20 ± 0.17 |
+| 12 | 134 | 1.86 ± 0.19 | 3.1 ± 0.3 | 25.24 ± 0.17 |
+| 16 | 178 | 1.80 ± 0.00 | 3.0 ± 0.0 | 25.20 ± 0.09 |
+
+Every pairwise comparison: laps p = 1.000, race time p ≥ 0.50 (Holm p = 1.000), |δ| ≤ 0.28.
+
+**Interpretation.** Network size makes no difference at all here: every size learns the training
+tracks perfectly, passes the same unseen tracks and drives them equally fast. The hypothesis is
+**not supported**, and with it the overfitting explanation of Experiment 4 falls: the 16-neuron
+network has more than twice the weights of the 9-sensor network yet generalizes like the default.
+The 9-sensor weakness must come from what the inputs are, not from how many weights process them.
+For this task, even 4 hidden neurons are enough capacity.
+
+**Limitations.** Equal numbers of generations for all sizes; a larger network has a larger search
+space and might benefit from longer training. "No difference" here means none was detected with
+10 runs.
+
+**In one sentence:** the network's size does not matter for this task; its inputs and its training
+do.
+
+## 9. Experiment 7: population or generations?
+
+**Why it matters.** Every genetic algorithm spends a computing budget as population × generations.
+Should that budget buy many cars for a few generations (broad search) or a few cars for many
+generations (long refinement)? The answer guides how to set up training.
+
+**Hypothesis.** With the budget fixed, the split between population and generations changes how
+well the champions generalize.
+
+**Design.** 6,000 car evaluations per run, split three ways: 50 cars × 120 generations, 100 × 60
+(the default) and 200 × 30. Rotating training, five unseen tracks, seeds 1–10.
+
+**Results.**
+
+![Experiment 7: laps on five unseen tracks for three ways to spend the same budget](experiments/population-budget.svg)
+
+| Split | Laps per unseen track | Tracks finished (of 5) | Race time on `snake`, `bean` (s) |
+|---|---|---|---|
+| 50 cars × 120 generations | 1.74 ± 0.19 | 2.9 ± 0.3 | **24.62 ± 0.03** |
+| 100 cars × 60 generations | 1.86 ± 0.19 | 3.1 ± 0.3 | 24.76 ± 0.18 |
+| 200 cars × 30 generations | 1.86 ± 0.19 | 3.1 ± 0.3 | 25.03 ± 0.17 |
+
+| Race time comparison | Difference | p (Holm) | Cliff's δ |
+|---|---|---|---|
+| 50 × 120 vs 100 × 60 | −0.14 s | **0.016** | −0.54 (large) |
+| 50 × 120 vs 200 × 30 | −0.41 s | **< 0.001** | −1.00 (large) |
+| 100 × 60 vs 200 × 30 | −0.27 s | **0.009** | −0.73 (large) |
+
+Laps per unseen track: no significant difference (p = 1.000 after Holm).
+
+**Interpretation.** The hypothesis is not supported for generalization: every split passes the
+same three unseen tracks and fails the same two, because what decides that is the corners seen in
+training (Experiment 3), not the budget. The two conditions with 100 and 200 cars even have
+identical lap counts, by coincidence: each passed the triangle in exactly one run. The budget does
+change the *quality* of the driving: the more generations, the faster the champions drive unseen
+tracks they can handle, by about 1.6 % from 200 × 30 to 50 × 120, with large and significant
+effects between every pair. Long refinement polishes the driving; broad search does not add new
+skills.
+
+**Limitations.** More generations also means more chances to pick a champion (one check per
+generation), which may contribute to the effect. The absolute gain is small. The race time is the
+secondary measure described in Section 2.
+
+**In one sentence:** with a fixed budget, spend it on generations: you get the same skills, driven
+faster.
+
+## 10. Discussion
 
 Taken together, the experiments describe what this kind of neuroevolution learns:
 
 - **Experience, not capacity, decides generalization.** Varied training tracks (Experiment 2) and
-  in particular varied corners (Experiment 3) produce brains that drive new tracks. Giving the
-  network more inputs (Experiment 4) did the opposite. This matches the central lesson of machine
-  learning: a model generalizes to what its training data covers, and extra capacity without
-  extra variety invites overfitting.
+  in particular varied corners (Experiment 3) produce brains that drive new tracks. A larger
+  network changed nothing (Experiment 6), and a denser sensor fan made generalization worse
+  (Experiment 4) for a reason that is not network size. This matches the central lesson of
+  machine learning: a model generalizes to what its training data covers.
+- **Generalization has a price.** Brains that learned to handle very sharp corners drive ordinary
+  tracks more slowly (Experiment 3). Breadth and speed pull in different directions.
 - **The search is robust.** With elitism, the genetic algorithm tolerated mutation rates from 0.3
   up to 0.8 without losing speed or final quality (Experiment 1), and the learned policies
-  tolerated moderate sensor noise (Experiment 5). The method is forgiving to tune.
+  tolerated moderate sensor noise (Experiment 5). The method is forgiving to tune; where there is a
+  choice, more generations refine the driving more than a larger population (Experiment 7).
 - **There are hard limits in the inputs.** Three rays are too few to learn the hardest preset
   reliably (Experiment 4); somewhere between three and five, perception becomes sufficient.
 
-## 9. Threats to validity
+## 11. Threats to validity
 
 - **Sample size.** Ten runs per condition detect large effects reliably but can miss small ones.
   Non-significant results should be read as "not shown", not as "no effect".
@@ -364,12 +472,16 @@ Taken together, the experiments describe what this kind of neuroevolution learns
 - **Hand-designed tracks.** The unseen test tracks and the fourth training tracks were designed by
   the author. They were not tuned to any condition, but a different set of shapes could change
   the numbers.
-- **One architecture.** All experiments use one hidden layer of 6 neurons, a population of 100 and
-  60 (or 50) generations. Larger networks or longer training could behave differently.
+- **One architecture.** Apart from Experiments 6 and 7, all experiments use one hidden layer of 6
+  neurons, a population of 100 and 60 (or 50) generations. Deeper networks or much longer training
+  could behave differently.
+- **A measure added after the fact.** The race time (Section 2) was introduced after seeing
+  Experiment 7's saturated lap counts. It is applied to every experiment by a fixed rule, but it
+  was not planned in advance.
 - **A simple world.** The physics is deliberately simple and deterministic. The results describe
   learning in this simulator, not real vehicles.
 
-## 10. Reproducing the results
+## 12. Reproducing the results
 
 Every experiment is defined by a file in `experiments/`, writes its raw data to
 `experiments/results/*.csv`, and regenerates its chart and full table in `docs/experiments/`. The
@@ -384,6 +496,8 @@ same command always produces the same files.
 | 4a. Sensors, learning | `npm run experiment -- experiments/ray-count.json` | ≈ 5 min |
 | 4b. Sensors, generalization | `npm run experiment -- experiments/ray-count-generalization.json` | ≈ 10 min |
 | 5. Sensor noise | `npm run experiment -- experiments/sensor-noise.json` | ≈ 5 min |
+| 6. Network size | `npm run experiment -- experiments/network-size.json` | ≈ 10 min |
+| 7. Population or generations | `npm run experiment -- experiments/population-budget.json` | ≈ 10 min |
 
 To redraw a chart and its table from an existing CSV without retraining:
 `npm run plot -- experiments/<name>.json`.

@@ -16,7 +16,7 @@ build step. The simulation is 2D; you can watch it in 2D or in 3D (Three.js).
 
 ## Key results
 
-Five controlled experiments, each with 10 fixed seeds per condition and exact permutation tests;
+Seven controlled experiments, each with 10 fixed seeds per condition and exact permutation tests;
 the full write-up is in the **[experiment report](docs/REPORT.md)**.
 
 | Question | Finding |
@@ -26,6 +26,8 @@ the full write-up is in the **[experiment report](docs/REPORT.md)**.
 | Why do they still fail some? | Unseen corners sharper than any in training. One training track with such corners lifts the two failed tracks from **0/10 to 8/10 and 6/10** runs (p = 0.002). |
 | How many sensors are needed? | 3 are too few, 5 are enough, and **9 generalize worse** than 5 or 7 (p < 0.001). |
 | How robust are the brains to noisy sensors? | Robust up to ±0.1 noise; at ±0.2 most runs lose laps. Training with noise made no measurable difference. |
+| Does a bigger network help or hurt? | Neither: 4 to 16 hidden neurons generalize and drive the same. Inputs and training matter, size does not. |
+| Same budget: more cars or more generations? | The same tracks are passed either way, but **more generations drive faster** (24.62 vs 25.03 s, p < 0.001). |
 
 ## Features
 
@@ -39,7 +41,7 @@ the full write-up is in the **[experiment report](docs/REPORT.md)**.
   built-in pretrained brain, which laps all three preset tracks.
 - **You vs AI.** Race the pretrained brain or your training's champion with the arrow keys or WASD
   (touch buttons on phones), choose one of six car models and chase your record on each track.
-- **Experiments.** Five controlled, statistically tested experiments with a full
+- **Experiments.** Seven controlled, statistically tested experiments with a full
   [report](docs/REPORT.md).
 - **Turkish and English** interface.
 
@@ -91,6 +93,8 @@ results, their interpretation and their limitations.
 | 3 | Sharp corners in training | A brain slows down for a corner only if it has met corners that sharp before. |
 | 4 | Number of sensors (3 / 5 / 7 / 9) | Five sensors are enough; more can make generalization worse, not better. |
 | 5 | Noisy sensors (±0 → ±0.2) | Brains tolerate moderate noise; training with noise made no measurable difference. |
+| 6 | Network size (4 / 6 / 12 / 16 hidden) | The network's size does not matter for this task; its inputs and its training do. |
+| 7 | Population vs generations (same budget) | Spend a fixed budget on generations: the same skills, driven faster. |
 
 The two central results: rotating training generalizes far better than training on one track,
 and the tracks it still fails become passable once a training track contains corners that sharp.
@@ -151,8 +155,8 @@ Train headlessly; the champion brain is written to `trained/` as JSON and can be
 npm run train -- --track classic --generations 80 --seed 42
 ```
 
-Reproduce an experiment (4–10 minutes each; the [report](docs/REPORT.md#10-reproducing-the-results)
-lists all seven):
+Reproduce an experiment (4–10 minutes each; the [report](docs/REPORT.md#12-reproducing-the-results)
+lists all nine):
 
 ```bash
 npm run experiment -- experiments/generalization.json

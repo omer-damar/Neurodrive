@@ -16,7 +16,7 @@ Simülasyon 2D; 2D ya da 3D (Three.js) izlenebilir.
 
 ## Öne çıkan sonuçlar
 
-Beş kontrollü deney; her koşulda 10 sabit tohum ve kesin permütasyon testleri. Ayrıntılı anlatım
+Yedi kontrollü deney; her koşulda 10 sabit tohum ve kesin permütasyon testleri. Ayrıntılı anlatım
 **[deney raporunda](docs/REPORT.tr.md)**.
 
 | Soru | Bulgu |
@@ -26,6 +26,8 @@ Beş kontrollü deney; her koşulda 10 sabit tohum ve kesin permütasyon testler
 | Bazılarında neden hâlâ başarısızlar? | Eğitimdeki her virajdan keskin görülmemiş virajlar. Böyle virajlı tek bir eğitim pisti, geçilemeyen iki pisti **0/10'dan 8/10 ve 6/10** koşuya çıkarıyor (p = 0,002). |
 | Kaç sensör gerekli? | 3 az, 5 yeterli; **9 ışın**, 5 ve 7'den **daha kötü genelleniyor** (p < 0,001). |
 | Beyinler gürültülü sensörlere ne kadar dayanıklı? | ±0,1 gürültüye kadar dayanıklı; ±0,2'de çoğu koşu tur kaybediyor. Gürültüyle eğitmek ölçülebilir bir fark yaratmadı. |
+| Büyük bir ağ yardım mı ediyor, zarar mı veriyor? | İkisi de değil: 4'ten 16'ya gizli nöron aynı genelleniyor ve aynı sürüyor. Önemli olan girdiler ve eğitim, büyüklük değil. |
+| Aynı bütçe: daha çok araba mı, daha çok nesil mi? | Her iki yolda da aynı pistler geçiliyor, ama **daha çok nesil daha hızlı sürüyor** (24,62'ye karşı 25,03 sn, p < 0,001). |
 
 ## Özellikler
 
@@ -40,7 +42,7 @@ Beş kontrollü deney; her koşulda 10 sabit tohum ve kesin permütasyon testler
   hepsinde tur atan gömülü hazır beyinle başla.
 - **Sen vs YZ.** Hazır beyinle ya da eğitimin şampiyonuyla ok tuşları veya WASD ile yarış
   (telefonda dokunmatik düğmeler), altı araba modelinden birini seç, her pistteki rekorunu kovala.
-- **Deneyler.** İstatistiksel olarak sınanmış beş kontrollü deney ve ayrıntılı bir
+- **Deneyler.** İstatistiksel olarak sınanmış yedi kontrollü deney ve ayrıntılı bir
   [rapor](docs/REPORT.tr.md).
 - **Türkçe ve İngilizce** arayüz.
 
@@ -92,6 +94,8 @@ sınırlılıkları veriyor.
 | 3 | Eğitimde keskin virajlar | Bir beyin bir viraj için ancak daha önce o keskinlikte virajlarla karşılaştıysa yavaşlıyor. |
 | 4 | Sensör sayısı (3 / 5 / 7 / 9) | Beş sensör yetiyor; fazlası genellemeyi iyileştirmek yerine kötüleştirebilir. |
 | 5 | Gürültülü sensörler (±0 → ±0,2) | Beyinler orta düzey gürültüyü kaldırıyor; gürültüyle eğitmek ölçülebilir bir fark yaratmadı. |
+| 6 | Ağ büyüklüğü (4 / 6 / 12 / 16 gizli) | Bu görevde ağın büyüklüğü önemli değil; önemli olan girdileri ve eğitimi. |
+| 7 | Nüfus mu nesil mi (aynı bütçe) | Sabit bütçeyi nesle harca: aynı beceriler, daha hızlı sürüş. |
 
 İki merkezî sonuç: dönüşümlü eğitim tek pistte eğitimden çok daha iyi genelleniyor ve hâlâ
 geçemediği pistler, eğitim pistlerinden biri o keskinlikte virajlar içerince geçilebilir hale
@@ -154,8 +158,8 @@ Ekransız eğitim; şampiyon beyin `trained/` klasörüne JSON olarak yazılır 
 npm run train -- --track classic --generations 80 --seed 42
 ```
 
-Bir deneyi yeniden üret (her biri 4–10 dakika; yedisinin listesi
-[raporda](docs/REPORT.tr.md#10-sonuçları-yeniden-üretmek)):
+Bir deneyi yeniden üret (her biri 4–10 dakika; dokuzunun listesi
+[raporda](docs/REPORT.tr.md#12-sonuçları-yeniden-üretmek)):
 
 ```bash
 npm run experiment -- experiments/generalization.json
