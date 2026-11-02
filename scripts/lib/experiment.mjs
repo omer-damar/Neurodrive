@@ -23,6 +23,7 @@ export const VARIABLES = Object.freeze({
   hiddenNeurons: 'hiddenNeurons',
   rayCount: 'rayCount',
   sensorNoise: 'sensorNoise',
+  raySpread: 'raySpread', // total fan width in radians
 });
 
 /**

@@ -410,6 +410,21 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
+.findings {
+  margin: 0 0 10px;
+  padding-left: 18px;
+  font-size: 0.85rem;
+}
+
+.findings li + li {
+  margin-top: 6px;
+}
+
+.findings-link {
+  color: var(--accent);
+  font-size: 0.85rem;
+}
+
 .setting-row {
   display: flex;
   justify-content: space-between;

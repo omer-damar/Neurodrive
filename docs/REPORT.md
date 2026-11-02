@@ -5,7 +5,7 @@
 ## Abstract
 
 NeuroDrive trains simulated cars to drive with a small neural network whose weights are found by a
-genetic algorithm. This report asks seven questions about that learning process and answers each
+genetic algorithm. This report asks nine questions about that learning process and answers each
 with a controlled, reproducible experiment: 10 fixed random seeds per condition, one variable
 changed at a time, and exact permutation tests for every comparison.
 
@@ -18,10 +18,12 @@ changed at a time, and exact permutation tests for every comparison.
 | 5 | How robust are the brains to noisy sensors? | Robust up to ±0.1 noise; at ±0.2 performance drops in most runs. Training with noise did not measurably help. | Drop at ±0.2: δ = +0.60, p = 0.031 (0.19 after Holm). Noisy vs exact training: all p ≥ 0.21. |
 | 6 | Does a bigger network generalize worse? | No. 4 to 16 hidden neurons generalize and drive identically, so Experiment 4's 9-sensor result is not caused by network size. | All comparisons p = 1.000 (laps) and ≥ 0.50 (race time). |
 | 7 | Same budget: more cars or more generations? | Which unseen tracks are passed does not change; more generations make the driving measurably faster. | Race time 24.62 s (50 × 120) vs 25.03 s (200 × 30), p < 0.001, δ = −1.00. |
+| 8 | Is it the number of sensors or their spacing? | The spacing. Rays packed closer than 22.5° hurt generalization whether there are 7 or 9 of them; 9 rays spread wider are fine. | Same count, dense vs wide: p ≤ 0.010, δ ≥ 0.73. Same spacing, 7 vs 9 rays: no difference. |
+| 9 | How many training tracks are needed? | Two, if the second brings harder corners; a third and fourth easy track add nothing. | 1 vs 2 tracks: p < 0.001, δ = −0.91. 2 vs 3 vs 4: p = 1.000. |
 
 The common thread: **what the brain has seen in training matters more than how much it can see,
-how large it is, or how its weights are perturbed.** Varied tracks and sharp corners in training
-buy generalization; extra sensors, extra neurons and extra mutation do not.
+how large it is, or how its weights are perturbed.** Varied corners in training buy generalization;
+extra sensors, extra neurons, extra easy tracks and extra mutation do not.
 
 ## Contents
 
@@ -34,9 +36,11 @@ buy generalization; extra sensors, extra neurons and extra mutation do not.
 7. [Experiment 5: noisy sensors](#7-experiment-5-noisy-sensors)
 8. [Experiment 6: network size](#8-experiment-6-network-size)
 9. [Experiment 7: population or generations?](#9-experiment-7-population-or-generations)
-10. [Discussion](#10-discussion)
-11. [Threats to validity](#11-threats-to-validity)
-12. [Reproducing the results](#12-reproducing-the-results)
+10. [Experiment 8: ray count or ray spacing?](#10-experiment-8-ray-count-or-ray-spacing)
+11. [Experiment 9: how many training tracks?](#11-experiment-9-how-many-training-tracks)
+12. [Discussion](#12-discussion)
+13. [Threats to validity](#13-threats-to-validity)
+14. [Reproducing the results](#14-reproducing-the-results)
 
 ## 1. The system under study
 
@@ -295,15 +299,15 @@ training tracks perfectly but generalize worse than 5- or 7-ray brains, almost e
 they fail the `snake` track (1 of 10 runs finished, against 10 of 10). A first explanation was
 overfitting: 10 inputs give the network more weights with which to fit the specific shapes of the
 training tracks. **Experiment 6 tested this and did not support it:** networks with far more
-weights than the 9-sensor one generalize as well as the default. What remains is how the denser
-ray fan represents the road; this is an open question.
+weights than the 9-sensor one generalize as well as the default. **Experiment 8 then found the
+cause: the spacing between the rays, not their number.**
 
 **Limitations.** The fan width was kept fixed, so "more rays" also means "rays closer together".
 The 3-ray runs that never lapped are left out of the learning-speed comparison, which makes 3 rays
 look better than they are; the difference is significant anyway.
 
 **In one sentence:** five sensors are enough, and more sensors can make generalization worse, not
-better, for a reason that is not network size.
+better, because they end up too close together (Experiment 8).
 
 ## 7. Experiment 5: noisy sensors
 
@@ -389,7 +393,8 @@ Every pairwise comparison: laps p = 1.000, race time p ≥ 0.50 (Holm p = 1.000)
 tracks perfectly, passes the same unseen tracks and drives them equally fast. The hypothesis is
 **not supported**, and with it the overfitting explanation of Experiment 4 falls: the 16-neuron
 network has more than twice the weights of the 9-sensor network yet generalizes like the default.
-The 9-sensor weakness must come from what the inputs are, not from how many weights process them.
+The 9-sensor weakness must come from what the inputs are, not from how many weights process them;
+Experiment 8 shows it is their spacing.
 For this task, even 4 hidden neurons are enough capacity.
 
 **Limitations.** Equal numbers of generations for all sizes; a larger network has a larger search
@@ -445,14 +450,114 @@ secondary measure described in Section 2.
 **In one sentence:** with a fixed budget, spend it on generations: you get the same skills, driven
 faster.
 
-## 10. Discussion
+## 10. Experiment 8: ray count or ray spacing?
+
+**Why it matters.** Experiment 4 found that 9 sensors generalize worse than 7, and Experiment 6
+ruled out network size as the cause. Two explanations remained, because in Experiment 4 more rays
+also meant rays packed closer together: is it the **number** of inputs, or the **spacing**
+between rays?
+
+**Hypothesis.** The spacing is what matters: rays packed closer than the default hurt
+generalization, whatever their number.
+
+**Design.** A 2 × 2 design that separates the two. Each condition fixes the ray count and the fan
+width so that the spacing between neighbouring rays is either the default 22.5° or the dense
+16.9° of the 9-ray fan:
+
+| Condition | Rays | Fan width | Spacing |
+|---|---|---|---|
+| A (default) | 7 | 135° | 22.5° |
+| B (Experiment 4's weak case) | 9 | 135° | 16.9° |
+| C | 9 | 180° | **22.5°** (as A) |
+| D | 7 | 101.25° | **16.9°** (as B) |
+
+If the spacing matters, C should behave like A and D like B. If the number of rays matters, C
+should behave like B and D like A. Rotating training for 60 generations, five unseen tracks.
+
+**Results.**
+
+![Experiment 8: laps on five unseen tracks for four ray count and spacing combinations](experiments/ray-spacing.svg)
+
+| Condition | Laps per unseen track | Tracks finished (of 5) | `snake` finished |
+|---|---|---|---|
+| A: 7 rays, 22.5° apart | 1.86 ± 0.19 | 3.1 ± 0.3 | 10 / 10 |
+| B: 9 rays, 16.9° apart | 1.36 ± 0.23 | 2.1 ± 0.3 | 1 / 10 |
+| C: 9 rays, 22.5° apart | 1.80 ± 0.00 | 3.0 ± 0.0 | 10 / 10 |
+| D: 7 rays, 16.9° apart | 1.52 ± 0.23 | 2.3 ± 0.5 | 3 / 10 |
+
+| Comparison | Difference | p (Holm) | Cliff's δ |
+|---|---|---|---|
+| A vs C (same spacing, 7 vs 9 rays) | +0.06 | 1.000 | +0.10 (negligible) |
+| B vs D (same spacing, 9 vs 7 rays) | −0.16 | 0.384 | −0.40 (medium) |
+| A vs D (same count, wide vs dense) | +0.34 | **0.010** | +0.73 (large) |
+| C vs B (same count, wide vs dense) | +0.44 | **< 0.001** | +0.90 (large) |
+
+All conditions learn their training tracks perfectly and drive the commonly finished tracks
+equally fast (25.17–25.22 s, all p ≥ 0.28).
+
+**Interpretation.** The prediction of the spacing explanation held on every point. With the
+default spacing, 9 rays generalize as well as 7 (A vs C); with the dense spacing, 7 rays fail like
+9 do (B vs D, no significant difference), and both dense conditions lose to their wide twins with
+large, significant effects. Neither the number of rays nor the fan width fits all four results
+(9 rays are good in C and poor in B; a 135° fan is good in A and poor in B); the spacing does. Both
+dense conditions fail the same track, `snake`, with its tight S-bend. Why densely packed rays
+hurt is still open; one possibility is that neighbouring rays then report nearly the same
+distances, so the network gets less independent information about the road's shape for the same
+number of inputs.
+
+**Limitations.** Two spacings only; the effect of even wider spacing was not tested. The
+mechanism above is a hypothesis.
+
+**In one sentence:** it is not how many sensors a car has but how far apart they are; rays packed
+too closely hurt generalization.
+
+## 11. Experiment 9: how many training tracks?
+
+**Why it matters.** Experiments 2 and 3 showed that varied training generalizes. A practical
+follow-up: does every extra track help, or does a small, well-chosen set suffice?
+
+**Hypothesis.** Generalization grows with the number of training tracks.
+
+**Design.** 1 track (`classic`), 2 tracks (+ `technical`), 3 tracks (+ `oval`, as in Experiment 2)
+and 4 tracks (+ the mild track of Experiment 3), all in rotation for 60 generations. Each step adds
+one track to the previous set, so the number of tracks and which track is added change together.
+
+**Results.**
+
+![Experiment 9: laps on five unseen tracks for one to four training tracks](experiments/track-count.svg)
+
+| Training tracks | Laps per unseen track | Tracks finished (of 5) |
+|---|---|---|
+| 1 (`classic`) | 0.44 ± 0.67 | 0.7 ± 1.1 |
+| 2 (+ `technical`) | 1.86 ± 0.19 | 3.1 ± 0.3 |
+| 3 (+ `oval`) | 1.86 ± 0.19 | 3.1 ± 0.3 |
+| 4 (+ mild) | 1.80 ± 0.00 | 3.0 ± 0.0 |
+
+1 track vs 2, 3 or 4: **p < 0.001**, δ = −0.90 to −0.91 (large). Between 2, 3 and 4 tracks:
+p = 1.000, |δ| ≤ 0.10.
+
+**Interpretation.** The hypothesis is not supported as stated: all of the gain comes from the
+second track, and the third and fourth add nothing. The second track is `technical`, which brings
+the sharpest corners among the presets (1.67 / −1.38); `oval` and the mild track bring no corner
+sharper than what is already covered. This is an independent confirmation of Experiment 3: what
+counts is not how many tracks a brain trains on but which corners they contain. The results also
+reproduce earlier ones exactly (1 track = Experiment 2's one-track condition, 4 tracks =
+Experiment 3's mild condition).
+
+**Limitations.** Each step adds a specific track, so "number of tracks" and "content of the added
+track" cannot be separated here; adding `oval` before `technical` would likely move the jump.
+
+**In one sentence:** a second track with harder corners is worth more than any number of easy
+ones.
+
+## 12. Discussion
 
 Taken together, the experiments describe what this kind of neuroevolution learns:
 
 - **Experience, not capacity, decides generalization.** Varied training tracks (Experiment 2) and
   in particular varied corners (Experiment 3) produce brains that drive new tracks. A larger
-  network changed nothing (Experiment 6), and a denser sensor fan made generalization worse
-  (Experiment 4) for a reason that is not network size. This matches the central lesson of
+  network changed nothing (Experiment 6), extra easy tracks changed nothing (Experiment 9), and
+  packing the sensors closer together made generalization worse (Experiments 4 and 8). This matches the central lesson of
   machine learning: a model generalizes to what its training data covers.
 - **Generalization has a price.** Brains that learned to handle very sharp corners drive ordinary
   tracks more slowly (Experiment 3). Breadth and speed pull in different directions.
@@ -463,7 +568,7 @@ Taken together, the experiments describe what this kind of neuroevolution learns
 - **There are hard limits in the inputs.** Three rays are too few to learn the hardest preset
   reliably (Experiment 4); somewhere between three and five, perception becomes sufficient.
 
-## 11. Threats to validity
+## 13. Threats to validity
 
 - **Sample size.** Ten runs per condition detect large effects reliably but can miss small ones.
   Non-significant results should be read as "not shown", not as "no effect".
@@ -481,7 +586,7 @@ Taken together, the experiments describe what this kind of neuroevolution learns
 - **A simple world.** The physics is deliberately simple and deterministic. The results describe
   learning in this simulator, not real vehicles.
 
-## 12. Reproducing the results
+## 14. Reproducing the results
 
 Every experiment is defined by a file in `experiments/`, writes its raw data to
 `experiments/results/*.csv`, and regenerates its chart and full table in `docs/experiments/`. The
@@ -498,6 +603,8 @@ same command always produces the same files.
 | 5. Sensor noise | `npm run experiment -- experiments/sensor-noise.json` | ≈ 5 min |
 | 6. Network size | `npm run experiment -- experiments/network-size.json` | ≈ 10 min |
 | 7. Population or generations | `npm run experiment -- experiments/population-budget.json` | ≈ 10 min |
+| 8. Ray count or spacing | `npm run experiment -- experiments/ray-spacing.json` | ≈ 12 min |
+| 9. Number of training tracks | `npm run experiment -- experiments/track-count.json` | ≈ 10 min |
 
 To redraw a chart and its table from an existing CSV without retraining:
 `npm run plot -- experiments/<name>.json`.

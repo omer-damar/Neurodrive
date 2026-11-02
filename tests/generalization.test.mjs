@@ -173,3 +173,11 @@ test('a condition may train for its own number of generations', () => {
   assert.equal(rows[0].chosenGeneration, 1, 'one generation: the champion comes from it');
   assert.throws(() => parseGeneralization({ ...TINY, conditions: [{ name: 'x', tracks: ['oval'], generations: 0 }] }), /positive generation count/);
 });
+
+test('the ray spacing experiment pairs ray counts with equal spacings', () => {
+  const def = parseGeneralization(JSON.parse(readFileSync('experiments/ray-spacing.json', 'utf8')));
+  const spacing = (c) => c.config.raySpread / (c.config.rayCount - 1);
+  const [a, b, c, d] = def.conditions;
+  assert.ok(Math.abs(spacing(a) - spacing(c)) < 1e-12, '9 rays over 180° are as far apart as the default');
+  assert.ok(Math.abs(spacing(b) - spacing(d)) < 1e-12, '7 rays over 101.25° are as dense as 9 over 135°');
+});

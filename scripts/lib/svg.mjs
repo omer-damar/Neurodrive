@@ -168,6 +168,7 @@ function esc(s) {
 
 const BAR = { width: 760, height: 470, pad: { top: 84, right: 24, bottom: 96, left: 64 }, gap: 2, radius: 4, cap: 5 };
 const THUMB = { width: 64, height: 40 }; // track outline under each group label
+const LEGEND_ROW = 18; // px between wrapped legend rows
 
 /**
  * Generalization result: one group per test track plus an "all" group, one bar per condition
@@ -181,7 +182,22 @@ export function generalizationChartSVG(summary, text) {
   if (summary.length > MAX_SERIES) throw new Error(`At most ${MAX_SERIES} conditions per chart`);
   const { width: W, height: H, pad } = BAR;
   const plotW = W - pad.left - pad.right;
-  const plotH = H - pad.top - pad.bottom;
+  // Legend items flow left to right and wrap onto a new row when they would overflow; each extra
+  // row pushes the plot down (identity is never colour alone: labels sit next to swatches).
+  const legend = [];
+  let lx = pad.left;
+  let row = 0;
+  summary.forEach((s, i) => {
+    const width = 18 + s.label.length * 7;
+    if (lx > pad.left && lx + width > W - pad.right) {
+      lx = pad.left;
+      row++;
+    }
+    legend.push({ i, label: s.label, x: lx, y: 56 + row * LEGEND_ROW });
+    lx += width + 24;
+  });
+  const plotTop = pad.top + row * LEGEND_ROW;
+  const plotH = H - plotTop - pad.bottom;
   const tracks = summary[0].perTrack.map((p) => p.track);
   const groups = [
     ...tracks.map((track, g) => ({ key: track, label: track, stats: summary.map((s) => s.perTrack[g]) })),
@@ -189,8 +205,8 @@ export function generalizationChartSVG(summary, text) {
   ];
   const groupW = plotW / groups.length;
   const barW = (groupW * 0.62 - BAR.gap * (summary.length - 1)) / summary.length;
-  const y = (v) => pad.top + plotH - (Math.min(Math.max(v, 0), text.maxLaps) / text.maxLaps) * plotH;
-  const base = pad.top + plotH;
+  const y = (v) => plotTop + plotH - (Math.min(Math.max(v, 0), text.maxLaps) / text.maxLaps) * plotH;
+  const base = plotTop + plotH;
 
   const parts = [];
   parts.push(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-labelledby="t d">`);
@@ -200,20 +216,17 @@ export function generalizationChartSVG(summary, text) {
   parts.push(`<text class="title" x="${pad.left}" y="24">${esc(text.title)}</text>`);
   parts.push(`<text class="muted" x="${pad.left}" y="42">${esc(text.subtitle)}</text>`);
 
-  // Legend: one row above the plot (identity is never colour alone: labels sit next to swatches).
-  let lx = pad.left;
-  summary.forEach((s, i) => {
-    parts.push(`<rect class="bar s${i}" x="${lx}" y="56" width="12" height="12" rx="2"/>`);
-    parts.push(`<text class="label" x="${lx + 18}" y="66">${esc(s.label)}</text>`);
-    lx += 18 + s.label.length * 7 + 24;
-  });
+  for (const item of legend) {
+    parts.push(`<rect class="bar s${item.i}" x="${item.x}" y="${item.y}" width="12" height="12" rx="2"/>`);
+    parts.push(`<text class="label" x="${item.x + 18}" y="${item.y + 10}">${esc(item.label)}</text>`);
+  }
 
   for (let v = 0; v <= text.maxLaps; v++) {
     parts.push(`<line class="grid" x1="${pad.left}" x2="${pad.left + plotW}" y1="${r(y(v))}" y2="${r(y(v))}"/>`);
     parts.push(`<text class="tick" x="${pad.left - 8}" y="${r(y(v) + 4)}" text-anchor="end">${v}</text>`);
   }
   parts.push(`<line class="axis" x1="${pad.left}" x2="${pad.left + plotW}" y1="${base}" y2="${base}"/>`);
-  parts.push(`<text class="muted" transform="translate(16 ${pad.top + plotH / 2}) rotate(-90)" text-anchor="middle">${esc(text.yLabel)}</text>`);
+  parts.push(`<text class="muted" transform="translate(16 ${plotTop + plotH / 2}) rotate(-90)" text-anchor="middle">${esc(text.yLabel)}</text>`);
 
   groups.forEach((group, g) => {
     const gx = pad.left + groupW * g + (groupW - (barW * summary.length + BAR.gap * (summary.length - 1))) / 2;

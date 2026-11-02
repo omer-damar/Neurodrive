@@ -37,7 +37,12 @@ const MAX_SPEED_MODE = 'max';
 const PREFS_KEY = 'neurodrive.view';
 const LANG_KEY = 'neurodrive.lang';
 const CUSTOM_TRACK = 'custom'; // track-select value of the drawn track
-const NOTICE_HIDE_MS = 6000; // success notices fade out; warnings stay until the next action
+const NOTICE_HIDE_MS = 6000;
+// The full experiment report, in the interface language.
+const REPORT_URLS = {
+  tr: 'https://github.com/omer-damar/Neurodrive/blob/main/docs/REPORT.tr.md',
+  en: 'https://github.com/omer-damar/Neurodrive/blob/main/docs/REPORT.md',
+}; // success notices fade out; warnings stay until the next action
 
 const els = {
   canvas: document.getElementById('canvas-2d'),
@@ -77,6 +82,7 @@ const els = {
   loadPretrained: document.getElementById('btn-load-pretrained'),
   brainStatus: document.getElementById('brain-status'),
   drawTrack: document.getElementById('btn-draw-track'),
+  findingsLink: document.getElementById('findings-link'),
   customOption: document.getElementById('track-custom-option'),
   raceStart: document.getElementById('btn-race'),
   raceOpponent: document.getElementById('race-opponent'),
@@ -342,6 +348,7 @@ function setLanguage(name) {
     /* ignore */
   }
   applyTranslations();
+  els.findingsLink.href = REPORT_URLS[active] ?? REPORT_URLS.en;
   for (const btn of els.langButtons) {
     const on = btn.dataset.lang === active;
     btn.classList.toggle('is-active', on);

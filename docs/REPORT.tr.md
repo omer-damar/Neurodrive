@@ -5,7 +5,7 @@
 ## Özet
 
 NeuroDrive, simüle edilen arabalara küçük bir sinir ağıyla sürmeyi öğretir; ağın ağırlıklarını
-genetik algoritma bulur. Bu rapor bu öğrenme süreci hakkında yedi soru soruyor ve her birini
+genetik algoritma bulur. Bu rapor bu öğrenme süreci hakkında dokuz soru soruyor ve her birini
 kontrollü, tekrar üretilebilir bir deneyle cevaplıyor: koşul başına 10 sabit tohum, her seferinde
 tek bir değişken ve her karşılaştırma için kesin permütasyon testi.
 
@@ -18,10 +18,12 @@ tek bir değişken ve her karşılaştırma için kesin permütasyon testi.
 | 5 | Beyinler gürültülü sensörlere ne kadar dayanıklı? | ±0,1 gürültüye kadar dayanıklı; ±0,2'de çoğu koşuda performans düşüyor. Gürültüyle eğitmek ölçülebilir bir fark yaratmadı. | ±0,2'de düşüş: δ = +0,60, p = 0,031 (Holm sonrası 0,19). Gürültülü vs gürültüsüz eğitim: tüm p ≥ 0,21. |
 | 6 | Büyük bir ağ daha mı kötü genelleniyor? | Hayır. 4'ten 16'ya gizli nöron aynı genelleniyor ve aynı sürüyor; yani Deney 4'teki 9 sensör sonucunun sebebi ağ büyüklüğü değil. | Bütün karşılaştırmalar p = 1,000 (tur) ve ≥ 0,50 (yarış süresi). |
 | 7 | Aynı bütçe: daha çok araba mı, daha çok nesil mi? | Hangi görülmemiş pistlerin geçildiği değişmiyor; daha çok nesil sürüşü ölçülebilir biçimde hızlandırıyor. | Yarış süresi 24,62 sn (50 × 120) vs 25,03 sn (200 × 30), p < 0,001, δ = −1,00. |
+| 8 | Belirleyici olan sensör sayısı mı, aralığı mı? | Aralık. 22,5°'den sık dizilmiş ışınlar 7 de olsa 9 da olsa genellemeyi bozuyor; daha geniş yayılmış 9 ışın sorunsuz. | Aynı sayı, sık vs geniş: p ≤ 0,010, δ ≥ 0,73. Aynı aralık, 7 vs 9 ışın: fark yok. |
+| 9 | Kaç eğitim pisti gerekli? | İkincisi daha zor virajlar getiriyorsa iki tane; üçüncü ve dördüncü kolay pist hiçbir şey eklemiyor. | 1 vs 2 pist: p < 0,001, δ = −0,91. 2 vs 3 vs 4: p = 1,000. |
 
 Ortak tema: **beynin eğitimde ne gördüğü; ne kadar görebildiğinden, ne kadar büyük olduğundan ya da
-ağırlıklarının ne kadar sarsıldığından daha önemli.** Çeşitli pistler ve keskin virajlar genelleme
-kazandırıyor; fazladan sensör, fazladan nöron ve fazladan mutasyon kazandırmıyor.
+ağırlıklarının ne kadar sarsıldığından daha önemli.** Eğitimdeki viraj çeşitliliği genelleme
+kazandırıyor; fazladan sensör, fazladan nöron, fazladan kolay pist ve fazladan mutasyon kazandırmıyor.
 
 ## İçindekiler
 
@@ -34,9 +36,11 @@ kazandırıyor; fazladan sensör, fazladan nöron ve fazladan mutasyon kazandır
 7. [Deney 5: gürültülü sensörler](#7-deney-5-gürültülü-sensörler)
 8. [Deney 6: ağ büyüklüğü](#8-deney-6-ağ-büyüklüğü)
 9. [Deney 7: nüfus mu, nesil mi?](#9-deney-7-nüfus-mu-nesil-mi)
-10. [Tartışma](#10-tartışma)
-11. [Geçerliliği tehdit eden etkenler](#11-geçerliliği-tehdit-eden-etkenler)
-12. [Sonuçları yeniden üretmek](#12-sonuçları-yeniden-üretmek)
+10. [Deney 8: ışın sayısı mı, ışın sıklığı mı?](#10-deney-8-ışın-sayısı-mı-ışın-sıklığı-mı)
+11. [Deney 9: kaç eğitim pisti?](#11-deney-9-kaç-eğitim-pisti)
+12. [Tartışma](#12-tartışma)
+13. [Geçerliliği tehdit eden etkenler](#13-geçerliliği-tehdit-eden-etkenler)
+14. [Sonuçları yeniden üretmek](#14-sonuçları-yeniden-üretmek)
 
 ## 1. İncelenen sistem
 
@@ -294,15 +298,15 @@ da 7 ışınlılardan daha kötü genelleniyor. Bunun neredeyse tamamı `snake` 
 koşunun 1'inde bitiş, diğerlerinde 10'da 10). İlk akla gelen açıklama aşırı uyumdu (overfitting):
 10 girdi, ağa eğitim pistlerinin kendine özgü şekillerine uyum sağlayacak daha çok ağırlık veriyor.
 **Deney 6 bunu test etti ve desteklemedi:** 9 sensörlü ağdan çok daha fazla ağırlığı olan ağlar
-varsayılan ağ kadar iyi genelleniyor. Geriye kalan açıklama, sıklaşan ışın yelpazesinin yolu nasıl
-temsil ettiği; bu hâlâ açık bir soru.
+varsayılan ağ kadar iyi genelleniyor. **Ardından Deney 8 sebebi buldu: ışınların sayısı değil,
+aralarındaki açıklık.**
 
 **Sınırlılıklar.** Yelpaze genişliği sabit tutuldu; yani "daha çok ışın" aynı zamanda "birbirine
 daha yakın ışınlar" demek. Hiç tur atamayan 3 ışınlı koşular öğrenme hızı karşılaştırmasının
 dışında kalıyor; bu 3 ışını olduğundan iyi gösteriyor, ama fark yine de anlamlı.
 
 **Tek cümleyle:** beş sensör yetiyor; daha fazlası genellemeyi iyileştirmek yerine kötüleştirebilir,
-ve bunun sebebi ağ büyüklüğü değil.
+çünkü ışınlar birbirine fazla yaklaşıyor (Deney 8).
 
 ## 7. Deney 5: gürültülü sensörler
 
@@ -387,7 +391,8 @@ Bütün ikili karşılaştırmalar: tur p = 1,000, yarış süresi p ≥ 0,50 (H
 **desteklenmiyor**; onunla birlikte Deney 4'ün aşırı uyum açıklaması da düşüyor: 16 nöronlu ağın
 ağırlığı 9 sensörlü ağın iki katından fazla, ama varsayılan ağ gibi genelleniyor. 9 sensörün
 zayıflığı, girdileri işleyen ağırlıkların sayısından değil, girdilerin ne olduğundan
-kaynaklanıyor olmalı. Bu görev için 4 gizli nöron bile yeterli kapasite.
+kaynaklanıyor olmalı; Deney 8 bunun ışınların aralığı olduğunu gösteriyor. Bu görev için 4 gizli
+nöron bile yeterli kapasite.
 
 **Sınırlılıklar.** Bütün boyutlar için nesil sayısı eşit; büyük bir ağın arama alanı daha büyük
 ve daha uzun eğitimden fayda görebilir. Buradaki "fark yok", 10 koşuyla bir fark bulunamadığı
@@ -439,14 +444,112 @@ ikincil ölçüt.
 
 **Tek cümleyle:** bütçe sabitse onu nesle harca: aynı becerileri daha hızlı sürüşle elde edersin.
 
-## 10. Tartışma
+## 10. Deney 8: ışın sayısı mı, ışın sıklığı mı?
+
+**Neden önemli.** Deney 4, 9 sensörün 7'den kötü genellendiğini buldu; Deney 6 da sebebin ağ
+büyüklüğü olmadığını gösterdi. Geriye iki açıklama kaldı, çünkü Deney 4'te daha çok ışın aynı
+zamanda birbirine daha yakın ışınlar demekti: belirleyici olan girdilerin **sayısı** mı, ışınlar
+arasındaki **aralık** mı?
+
+**Hipotez.** Belirleyici olan aralık: varsayılandan sık dizilmiş ışınlar, sayıları ne olursa olsun
+genellemeyi bozar.
+
+**Tasarım.** İki etkeni ayıran 2 × 2'lik bir tasarım. Her koşulda ışın sayısı ve yelpaze genişliği,
+komşu ışınlar arasındaki aralık ya varsayılan 22,5° ya da 9 ışınlı yelpazedeki sık 16,9° olacak
+şekilde seçildi:
+
+| Koşul | Işın | Yelpaze | Aralık |
+|---|---|---|---|
+| A (varsayılan) | 7 | 135° | 22,5° |
+| B (Deney 4'ün zayıf durumu) | 9 | 135° | 16,9° |
+| C | 9 | 180° | **22,5°** (A gibi) |
+| D | 7 | 101,25° | **16,9°** (B gibi) |
+
+Belirleyici olan aralıksa C, A gibi; D de B gibi davranmalı. Belirleyici olan ışın sayısıysa C, B
+gibi; D de A gibi davranmalı. 60 nesil dönüşümlü eğitim, beş görülmemiş pist.
+
+**Sonuçlar.**
+
+![Deney 8: dört ışın sayısı ve aralık birleşimi için beş görülmemiş pistte atılan tur](experiments/ray-spacing.svg)
+
+| Koşul | Görülmemiş pist başına tur | Bitirilen pist (5 üzerinden) | `snake` bitiren |
+|---|---|---|---|
+| A: 7 ışın, 22,5° aralık | 1,86 ± 0,19 | 3,1 ± 0,3 | 10 / 10 |
+| B: 9 ışın, 16,9° aralık | 1,36 ± 0,23 | 2,1 ± 0,3 | 1 / 10 |
+| C: 9 ışın, 22,5° aralık | 1,80 ± 0,00 | 3,0 ± 0,0 | 10 / 10 |
+| D: 7 ışın, 16,9° aralık | 1,52 ± 0,23 | 2,3 ± 0,5 | 3 / 10 |
+
+| Karşılaştırma | Fark | p (Holm) | Cliff's δ |
+|---|---|---|---|
+| A vs C (aynı aralık, 7'ye karşı 9 ışın) | +0,06 | 1,000 | +0,10 (ihmal edilebilir) |
+| B vs D (aynı aralık, 9'a karşı 7 ışın) | −0,16 | 0,384 | −0,40 (orta) |
+| A vs D (aynı sayı, geniş vs sık) | +0,34 | **0,010** | +0,73 (büyük) |
+| C vs B (aynı sayı, geniş vs sık) | +0,44 | **< 0,001** | +0,90 (büyük) |
+
+Bütün koşullar eğitim pistlerini kusursuz öğreniyor ve ortak bitirilen pistleri aynı hızda sürüyor
+(25,17–25,22 sn, tüm p ≥ 0,28).
+
+**Yorum.** Aralık açıklamasının tahmini her noktada tuttu. Varsayılan aralıkla 9 ışın, 7 ışın kadar
+iyi genelleniyor (A vs C). Sık aralıkla 7 ışın da 9 ışın gibi başarısız oluyor (B vs D, anlamlı fark
+yok). İki sık koşul da geniş aralıklı eşlerine büyük ve anlamlı farklarla yeniliyor. Ne ışın sayısı
+ne yelpaze genişliği dört sonucun hepsine uyuyor (9 ışın C'de iyi, B'de kötü; 135°'lik yelpaze A'da
+iyi, B'de kötü); aralık uyuyor. İki sık koşul da aynı pistte, sıkı S virajıyla `snake`'te kalıyor.
+Sık dizilmiş ışınların neden zarar verdiği hâlâ açık. Bir olasılık: komşu ışınlar neredeyse aynı
+mesafeleri ölçünce ağ, aynı sayıda girdiyle yolun şekli hakkında daha az bağımsız bilgi alıyor.
+
+**Sınırlılıklar.** Yalnızca iki aralık denendi; daha da geniş aralığın etkisi test edilmedi.
+Yukarıdaki mekanizma bir hipotez.
+
+**Tek cümleyle:** önemli olan arabanın kaç sensörü olduğu değil, aralarının ne kadar açık olduğu;
+fazla sık dizilmiş ışınlar genellemeyi bozuyor.
+
+## 11. Deney 9: kaç eğitim pisti?
+
+**Neden önemli.** Deney 2 ve 3 çeşitli eğitimin genellendiğini gösterdi. Pratik bir devam sorusu:
+her ek pist işe yarıyor mu, yoksa küçük ama iyi seçilmiş bir pist kümesi yetiyor mu?
+
+**Hipotez.** Eğitim pisti sayısı arttıkça genelleme artar.
+
+**Tasarım.** 1 pist (`classic`), 2 pist (+ `technical`), 3 pist (+ `oval`, Deney 2'deki gibi) ve 4
+pist (+ Deney 3'ün yumuşak pisti); hepsi 60 nesil dönüşümlü. Her adım öncekine bir pist ekliyor;
+yani pist sayısı ile hangi pistin eklendiği birlikte değişiyor.
+
+**Sonuçlar.**
+
+![Deney 9: bir ile dört eğitim pisti için beş görülmemiş pistte atılan tur](experiments/track-count.svg)
+
+| Eğitim pisti | Görülmemiş pist başına tur | Bitirilen pist (5 üzerinden) |
+|---|---|---|
+| 1 (`classic`) | 0,44 ± 0,67 | 0,7 ± 1,1 |
+| 2 (+ `technical`) | 1,86 ± 0,19 | 3,1 ± 0,3 |
+| 3 (+ `oval`) | 1,86 ± 0,19 | 3,1 ± 0,3 |
+| 4 (+ yumuşak) | 1,80 ± 0,00 | 3,0 ± 0,0 |
+
+1 pist vs 2, 3 ya da 4: **p < 0,001**, δ = −0,90 ile −0,91 (büyük). 2, 3 ve 4 pist arasında:
+p = 1,000, |δ| ≤ 0,10.
+
+**Yorum.** Hipotez bu haliyle desteklenmiyor: kazancın tamamı ikinci pistten geliyor, üçüncü ve
+dördüncü hiçbir şey eklemiyor. İkinci pist `technical`; presetlerin en keskin virajlarını getiriyor
+(1,67 / −1,38). `oval` ve yumuşak pist, zaten kapsananlardan keskin hiçbir viraj getirmiyor. Bu,
+Deney 3'ün bağımsız bir doğrulaması: önemli olan bir beynin kaç pistte eğitildiği değil, o
+pistlerin hangi virajları içerdiği. Sonuçlar önceki deneyleri de birebir tekrarlıyor (1 pist =
+Deney 2'nin tek pist koşulu, 4 pist = Deney 3'ün yumuşak koşulu).
+
+**Sınırlılıklar.** Her adım belirli bir pist ekliyor; bu yüzden "pist sayısı" ile "eklenen pistin
+içeriği" burada ayrılamıyor. `oval`, `technical`'dan önce eklenseydi sıçrama büyük ihtimalle yer
+değiştirirdi.
+
+**Tek cümleyle:** daha keskin virajlı ikinci bir pist, ne kadar çok olursa olsun kolay pistlerden
+daha değerli.
+
+## 12. Tartışma
 
 Birlikte ele alındığında deneyler, bu tür bir nöroevrimin neyi öğrendiğini anlatıyor:
 
 - **Genellemeyi kapasite değil, deneyim belirliyor.** Çeşitli eğitim pistleri (Deney 2) ve
   özellikle çeşitli virajlar (Deney 3), yeni pistleri sürebilen beyinler üretiyor. Daha büyük bir
-  ağ hiçbir şeyi değiştirmedi (Deney 6); daha sık bir sensör yelpazesi ise genellemeyi ağ
-  büyüklüğüyle ilgisi olmayan bir sebeple kötüleştirdi (Deney 4). Bu, makine öğrenmesinin temel
+  ağ hiçbir şeyi değiştirmedi (Deney 6), fazladan kolay pistler hiçbir şeyi değiştirmedi (Deney 9);
+  sensörleri birbirine yaklaştırmak ise genellemeyi kötüleştirdi (Deney 4 ve 8). Bu, makine öğrenmesinin temel
   dersiyle örtüşüyor: bir model eğitim verisinin kapsadığı şeylere genellenir.
 - **Genellemenin bir bedeli var.** Çok keskin virajlarla başa çıkmayı öğrenen beyinler sıradan
   pistleri daha yavaş sürüyor (Deney 3). Genişlik ve hız ters yönlere çekiyor.
@@ -457,7 +560,7 @@ Birlikte ele alındığında deneyler, bu tür bir nöroevrimin neyi öğrendiğ
 - **Girdilerde kesin sınırlar var.** Üç ışın, en zor preseti güvenilir biçimde öğrenmeye yetmiyor
   (Deney 4); algı, üç ile beş ışın arasında bir yerde yeterli hale geliyor.
 
-## 11. Geçerliliği tehdit eden etkenler
+## 13. Geçerliliği tehdit eden etkenler
 
 - **Örneklem büyüklüğü.** Koşul başına on koşu büyük etkileri güvenilir biçimde yakalar, ama
   küçükleri kaçırabilir. Anlamlı çıkmayan sonuçlar "etki yok" değil, "gösterilemedi" olarak
@@ -474,7 +577,7 @@ Birlikte ele alındığında deneyler, bu tür bir nöroevrimin neyi öğrendiğ
 - **Basit bir dünya.** Fizik bilinçli olarak basit ve deterministik. Sonuçlar bu simülatördeki
   öğrenmeyi anlatıyor, gerçek araçları değil.
 
-## 12. Sonuçları yeniden üretmek
+## 14. Sonuçları yeniden üretmek
 
 Her deney `experiments/` altındaki bir dosyayla tanımlanır; ham verisini
 `experiments/results/*.csv`'ye yazar, grafiğini ve tam tablosunu `docs/experiments/` altında
@@ -491,6 +594,8 @@ yeniden üretir. Aynı komut her zaman aynı dosyaları üretir.
 | 5. Sensör gürültüsü | `npm run experiment -- experiments/sensor-noise.json` | ≈ 5 dk |
 | 6. Ağ büyüklüğü | `npm run experiment -- experiments/network-size.json` | ≈ 10 dk |
 | 7. Nüfus mu, nesil mi | `npm run experiment -- experiments/population-budget.json` | ≈ 10 dk |
+| 8. Işın sayısı mı aralığı mı | `npm run experiment -- experiments/ray-spacing.json` | ≈ 12 dk |
+| 9. Eğitim pisti sayısı | `npm run experiment -- experiments/track-count.json` | ≈ 10 dk |
 
 Bir grafiği ve tablosunu yeniden eğitmeden, mevcut CSV'den yeniden çizmek için:
 `npm run plot -- experiments/<ad>.json`.
