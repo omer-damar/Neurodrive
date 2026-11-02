@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 470" width="760" height="470" role="img" aria-labelledby="t d">
+<title id="t">Gürültülü sensörlere dayanıklılık</title><desc id="d">Eğitim pistlerinde, gürültülü sensörlerle öğrenmeden atılan tur · koşul başına 10 tohum · ortalama ± 1 sd</desc>
+<style>svg{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}.surface{fill:#fcfcfb}.title{font-size:16px;font-weight:600;fill:#0b0b0b}.muted{font-size:12px;fill:#52514e}.tick{font-size:11px;fill:#52514e}.label{font-size:12px;fill:#0b0b0b}.grid{stroke:#e6e5e1;stroke-width:1}.axis{stroke:#9b9a95;stroke-width:1}.line{fill:none;stroke:var(--c);stroke-width:2;stroke-linejoin:round}.band{fill:var(--c);opacity:0.14}.dot{fill:var(--c);stroke:#fcfcfb;stroke-width:2}.s0{--c:#2a78d6}.s1{--c:#eb6834}.s2{--c:#1baf7a}.s3{--c:#eda100}@media (prefers-color-scheme:dark){.surface{fill:#1a1a19}.title,.label{fill:#f0efec}.muted,.tick{fill:#c3c2b7}.grid{stroke:#2e2e2c}.axis{stroke:#5c5b57}.dot{stroke:#1a1a19}.s0{--c:#3987e5}.s1{--c:#d95926}.s2{--c:#199e70}.s3{--c:#c98500}}.bar{fill:var(--c)}.err{stroke:#52514e;stroke-width:1.5}.thumb{fill:none;stroke:#9b9a95;stroke-width:1.5}@media (prefers-color-scheme:dark){.err{stroke:#c3c2b7}.thumb{stroke:#7a7975}}</style>
+<rect class="surface" width="760" height="470" rx="8"/>
+<text class="title" x="64" y="24">Gürültülü sensörlere dayanıklılık</text>
+<text class="muted" x="64" y="42">Eğitim pistlerinde, gürültülü sensörlerle öğrenmeden atılan tur · koşul başına 10 tohum · ortalama ± 1 sd</text>
+<rect class="bar s0" x="64" y="56" width="12" height="12" rx="2"/>
+<text class="label" x="82" y="66">Gürültüsüz eğitim</text>
+<rect class="bar s1" x="225" y="56" width="12" height="12" rx="2"/>
+<text class="label" x="243" y="66">Gürültüyle eğitim (±0.1)</text>
+<line class="grid" x1="64" x2="736" y1="374" y2="374"/>
+<text class="tick" x="56" y="378" text-anchor="end">0</text>
+<line class="grid" x1="64" x2="736" y1="277.3" y2="277.3"/>
+<text class="tick" x="56" y="281.3" text-anchor="end">1</text>
+<line class="grid" x1="64" x2="736" y1="180.7" y2="180.7"/>
+<text class="tick" x="56" y="184.7" text-anchor="end">2</text>
+<line class="grid" x1="64" x2="736" y1="84" y2="84"/>
+<text class="tick" x="56" y="88" text-anchor="end">3</text>
+<line class="axis" x1="64" x2="736" y1="374" y2="374"/>
+<text class="muted" transform="translate(16 229) rotate(-90)" text-anchor="middle">Pist başına tur (3 üzerinden)</text>
+<path class="bar s0" d="M95.9,374V88Q95.9,84 99.9,84H143Q147,84 147,88V374Z"><title>Gürültüsüz eğitim · ±0: 3 ± 0 · 30/10</title></path>
+<path class="bar s1" d="M149,374V88Q149,84 153,84H196.1Q200.1,84 200.1,88V374Z"><title>Gürültüyle eğitim (±0.1) · ±0: 3 ± 0 · 30/10</title></path>
+<text class="label" x="148" y="392" text-anchor="middle">±0</text>
+<path class="bar s0" d="M263.9,374V97.7Q263.9,93.7 267.9,93.7H311Q315,93.7 315,97.7V374Z"><title>Gürültüsüz eğitim · ±0.05: 2.90 ± 0.22 · 28/10</title></path>
+<line class="err" x1="289.5" x2="289.5" y1="84" y2="115.4"/>
+<line class="err" x1="284.5" x2="294.5" y1="84" y2="84"/>
+<line class="err" x1="284.5" x2="294.5" y1="115.4" y2="115.4"/>
+<path class="bar s1" d="M317,374V94.4Q317,90.4 321,90.4H364.1Q368.1,90.4 368.1,94.4V374Z"><title>Gürültüyle eğitim (±0.1) · ±0.05: 2.93 ± 0.21 · 29/10</title></path>
+<line class="err" x1="342.5" x2="342.5" y1="84" y2="110.8"/>
+<line class="err" x1="337.5" x2="347.5" y1="84" y2="84"/>
+<line class="err" x1="337.5" x2="347.5" y1="110.8" y2="110.8"/>
+<text class="label" x="316" y="392" text-anchor="middle">±0.05</text>
+<path class="bar s0" d="M431.9,374V107.3Q431.9,103.3 435.9,103.3H479Q483,103.3 483,107.3V374Z"><title>Gürültüsüz eğitim · ±0.1: 2.80 ± 0.32 · 27/10</title></path>
+<line class="err" x1="457.5" x2="457.5" y1="84" y2="134.5"/>
+<line class="err" x1="452.5" x2="462.5" y1="84" y2="84"/>
+<line class="err" x1="452.5" x2="462.5" y1="134.5" y2="134.5"/>
+<path class="bar s1" d="M485,374V88Q485,84 489,84H532.1Q536.1,84 536.1,88V374Z"><title>Gürültüyle eğitim (±0.1) · ±0.1: 3 ± 0 · 30/10</title></path>
+<text class="label" x="484" y="392" text-anchor="middle">±0.1</text>
+<path class="bar s0" d="M599.9,374V139.6Q599.9,135.6 603.9,135.6H647Q651,135.6 651,139.6V374Z"><title>Gürültüsüz eğitim · ±0.2: 2.47 ± 0.57 · 23/10</title></path>
+<line class="err" x1="625.5" x2="625.5" y1="84" y2="190.7"/>
+<line class="err" x1="620.5" x2="630.5" y1="84" y2="84"/>
+<line class="err" x1="620.5" x2="630.5" y1="190.7" y2="190.7"/>
+<path class="bar s1" d="M653,374V126.7Q653,122.7 657,122.7H700.1Q704.1,122.7 704.1,126.7V374Z"><title>Gürültüyle eğitim (±0.1) · ±0.2: 2.60 ± 0.41 · 24/10</title></path>
+<line class="err" x1="678.5" x2="678.5" y1="84" y2="162.3"/>
+<line class="err" x1="673.5" x2="683.5" y1="84" y2="84"/>
+<line class="err" x1="673.5" x2="683.5" y1="162.3" y2="162.3"/>
+<text class="label" x="652" y="392" text-anchor="middle">±0.2</text>
+</svg>

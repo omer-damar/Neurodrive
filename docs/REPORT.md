@@ -1,0 +1,392 @@
+# NeuroDrive: Experiment Report
+
+[Türkçe](REPORT.tr.md) · [Back to the README](../README.md)
+
+## Abstract
+
+NeuroDrive trains simulated cars to drive with a small neural network whose weights are found by a
+genetic algorithm. This report asks five questions about that learning process and answers each
+with a controlled, reproducible experiment: 10 fixed random seeds per condition, one variable
+changed at a time, and exact permutation tests for every comparison.
+
+| # | Question | Answer | Evidence |
+|---|---|---|---|
+| 1 | Does the mutation rate change how fast cars learn? | Low rates (0.05) learn slower than 0.3; above 0.3 the speed no longer changes, even at 0.8. Final skill is identical. | 0.05 vs 0.3: p = 0.044 (Holm), large effect. 0.3 / 0.5 / 0.8: no difference. |
+| 2 | Do trained brains drive tracks they have never seen? | Training on three tracks in rotation generalizes far better than training on one. | 1.86 vs 0.44 laps per unseen track, p < 0.001, δ = −0.91. |
+| 3 | Why do they still fail some unseen tracks? | Those tracks contain corners sharper than any in training. Adding one track with such corners fixes most failures. | Failed tracks: 0/10 → 8/10 and 6/10 runs finished; p = 0.002, δ = −0.80. |
+| 4 | How many distance sensors does a car need? | 3 are not enough; 5 are. 9 sensors learn as fast as 5–7 but generalize worse. | 3 vs ≥ 5 rays: p < 0.001. 9 vs 5 or 7 rays on unseen tracks: p < 0.001, δ ≈ −0.9. |
+| 5 | How robust are the brains to noisy sensors? | Robust up to ±0.1 noise; at ±0.2 performance drops in most runs. Training with noise did not measurably help. | Drop at ±0.2: δ = +0.60, p = 0.031 (0.19 after Holm). Noisy vs exact training: all p ≥ 0.21. |
+
+The common thread: **what the brain has seen in training matters more than how much it can see
+or how its weights are perturbed.** Varied tracks and sharp corners in training buy
+generalization; extra sensors and extra mutation do not.
+
+## Contents
+
+1. [The system under study](#1-the-system-under-study)
+2. [Method shared by all experiments](#2-method-shared-by-all-experiments)
+3. [Experiment 1: mutation rate](#3-experiment-1-mutation-rate)
+4. [Experiment 2: generalization to unseen tracks](#4-experiment-2-generalization-to-unseen-tracks)
+5. [Experiment 3: is it the sharp corners?](#5-experiment-3-is-it-the-sharp-corners)
+6. [Experiment 4: how many sensors?](#6-experiment-4-how-many-sensors)
+7. [Experiment 5: noisy sensors](#7-experiment-5-noisy-sensors)
+8. [Discussion](#8-discussion)
+9. [Threats to validity](#9-threats-to-validity)
+10. [Reproducing the results](#10-reproducing-the-results)
+
+## 1. The system under study
+
+- **Car.** A point on a 2D track with simple physics: throttle, braking, steering, and grip that
+  falls at high speed, so a car must slow down before tight corners. It is out of the race when it
+  touches a wall, stops making progress for 2.5 s, or turns back.
+- **Sensors.** By default 7 rays fanned over ±67.5° in front of the car. Each ray reports how close
+  the nearest wall is, from 0 (nothing within range) to 1 (touching). The car's speed is one more
+  input.
+- **Brain.** A feed-forward neural network `[inputs, 6 hidden, 2 outputs]` with `tanh`
+  activations. The outputs are steering and throttle. Nothing is learned by gradient descent; the
+  weights are only ever changed by evolution.
+- **Evolution.** A population of 100 cars drives at once. When all are out (or 60 s pass), each
+  car gets a **fitness**: laps completed as a fraction, plus a bonus for finishing three laps
+  early. The two best brains are copied unchanged (**elitism**); the other 98 are bred by
+  tournament selection, uniform crossover and Gaussian mutation (default rate 0.1, strength 0.5).
+- **Tracks.** Three presets of increasing difficulty: `oval`, `classic` and `technical`.
+
+## 2. Method shared by all experiments
+
+**Runs and seeds.** All training runs headlessly in Node, with the same code as the browser. Every
+random choice comes from one seeded generator, so a run is fully determined by its settings and
+its seed. Each condition is run with **seeds 1–10**, giving 10 independent runs per condition.
+Only the variable under study changes between conditions; everything else stays at its default.
+
+**Consistency checks.** Where two experiments share a condition, they reproduce it exactly: the
+mutation rate 0.3 runs are identical in Experiments 1a and 1b, and the "three tracks in rotation,
+7 sensors, no noise" condition gives the same 1.86 ± 0.19 laps in Experiments 2, 4b and 5.
+
+**Champion.** Experiments 2–5 test one brain per run, its *champion*: after each generation the
+two elites are each driven alone on the run's own training tracks, and the brain that drives the
+worst of them best (then the most laps overall) is kept. Test tracks are never used to choose it.
+
+**Unseen test tracks.** Five hand-designed tracks that no condition ever trains on: `triangle`,
+`horseshoe`, `square`, `snake` and `bean`. They were checked only to be valid and drivable by a
+simple scripted driver; they were not tuned to any condition.
+
+**Measures.**
+
+| Measure | Meaning |
+|---|---|
+| Generations to the first lap | The first generation in which the best car completes a full lap. Lower = faster learning. |
+| Best lap | The fastest single lap seen in the whole run, in seconds. |
+| Laps on a track (0–3) | The champion drives a track once, alone and without learning, for at most 60 s. 3 means it finished the race. |
+| Tracks finished | How many tracks the champion completed all 3 laps on. |
+
+**Statistics.** Results are reported as mean ± sample standard deviation over the 10 runs. Every
+comparison between conditions is tested, and every test is deterministic:
+
+- **Permutation test (unpaired).** If two conditions were really the same, the labels "A" and "B"
+  on the 20 runs would be arbitrary. The test counts **every** way to relabel the 20 runs into two
+  groups of 10 (184,756 ways) and reports the share that gives a difference at least as large as
+  the one observed. That share is the *p*-value; it is exact, not an approximation.
+- **Paired sign-flip test.** When the same brains are measured twice (with and without noise),
+  each run's difference is tested instead: under "no effect" each difference is as likely positive
+  as negative, and all 1,024 sign patterns are counted.
+- **Holm correction.** When a report makes several comparisons, some would look significant by
+  chance. Holm's method adjusts the *p*-values to keep the overall false-alarm rate at 5 %.
+  Adjusted *p* < 0.05 is called significant.
+- **Effect size, Cliff's δ.** *p* says whether a difference is real; δ says how big it is. δ is the
+  probability that a run from A beats a run from B minus the probability that it loses, from −1
+  to +1. |δ| ≥ 0.474 is conventionally a large effect, ≥ 0.33 medium, ≥ 0.147 small.
+
+Ten runs per condition can reveal large effects reliably but may miss small ones. A result that is
+not significant here means "not shown", not "shown to be absent".
+
+## 3. Experiment 1: mutation rate
+
+**Why it matters.** Mutation is the genetic algorithm's only source of new behaviour. Too little
+and the population stops exploring; too much and good solutions are destroyed before they can
+spread. Knowing where the useful range lies tells us how sensitive the method is to tuning.
+
+**Hypothesis.** Learning speed has an optimum: very low and very high rates are both slower than a
+middle value.
+
+**Design.** Track `technical` (the hardest preset), population 100, 50 generations. Part 1a
+compares rates 0.05, 0.1 and 0.3; part 1b extends the range to 0.3, 0.5 and 0.8. The rate is the
+probability that each single weight is mutated in a child; the mutation size stays 0.5.
+
+**Results.**
+
+![Experiment 1a: best fitness per generation for rates 0.05, 0.1 and 0.3](experiments/mutation-rate.svg)
+
+![Experiment 1b: best fitness per generation for rates 0.3, 0.5 and 0.8](experiments/mutation-rate-high.svg)
+
+| Rate | Generations to the first lap | Runs without a lap | Best lap (s) |
+|---|---|---|---|
+| 0.05 | 10.1 ± 4.6 | 0 / 10 | 8.75 ± 0.03 |
+| 0.1 (default) | 8.4 ± 4.2 | 0 / 10 | 8.74 ± 0.03 |
+| 0.3 | 5.7 ± 2.2 | 0 / 10 | 8.73 ± 0.02 |
+| 0.5 | 6.3 ± 2.3 | 0 / 10 | 8.72 ± 0.02 |
+| 0.8 | 5.4 ± 2.4 | 0 / 10 | 8.73 ± 0.02 |
+
+| Comparison (generations to the first lap) | Difference | p (Holm) | Cliff's δ |
+|---|---|---|---|
+| 0.05 vs 0.3 | +4.4 | **0.044** | +0.61 (large) |
+| 0.05 vs 0.1 | +1.7 | 0.424 | +0.23 (small) |
+| 0.1 vs 0.3 | +2.7 | 0.211 | +0.36 (medium) |
+| 0.3 vs 0.5, 0.3 vs 0.8, 0.5 vs 0.8 | −0.6 to +0.9 | 1.000 | ≤ 0.29 |
+
+**Interpretation.** Raising the rate from 0.05 to 0.3 makes learning measurably faster (4.4 fewer
+generations to the first lap, a large effect). Beyond 0.3 the speed stops changing: even 0.8,
+where most weights of every child are disturbed, learns as fast as 0.3. The hypothesis is only
+half supported: there is a slow low end, but no harmful high end in this range. A likely reason is
+elitism: the two best brains are always kept unmutated, so heavy mutation cannot destroy the best
+solution found so far; it can only add more varied children around it. All rates reach the same
+final lap time (≈ 8.73 s).
+
+**Limitations.** One track and one mutation size; the interaction between rate and size, and the
+role of elitism, were not tested directly.
+
+**In one sentence:** mutate at least moderately (≥ 0.3); with elitism, more mutation costs nothing.
+
+## 4. Experiment 2: generalization to unseen tracks
+
+**Why it matters.** A brain that drives only the track it was trained on has memorized a route,
+not learned to drive. Generalization to new tracks is the real test of learning, and it is the
+central problem of machine learning in general.
+
+**Hypothesis.** Training on several tracks in rotation generalizes better than training on one.
+
+**Design.** Two conditions with the same budget, 60 generations of population 100: one track
+(`classic`), or the three presets in rotation (the track changes every generation). Each run's
+champion then drives the five unseen tracks.
+
+**Results.**
+
+![Experiment 2: laps on five unseen tracks, one track vs rotating training](experiments/generalization.svg)
+
+| Training | Laps per unseen track (of 3) | Unseen tracks finished (of 5) | Laps on training tracks |
+|---|---|---|---|
+| One track (`classic`) | 0.44 ± 0.67 | 0.7 ± 1.1 | 3.00 ± 0.00 |
+| Rotating (oval, classic, technical) | 1.86 ± 0.19 | 3.1 ± 0.3 | 3.00 ± 0.00 |
+
+Difference in laps per unseen track: −1.42, **p < 0.001**, Cliff's δ = −0.91 (large).
+
+**Interpretation.** Both conditions master their own training tracks, so the difference is not
+about skill on known tracks. On new tracks, rotating training is far better and far more
+consistent: it finished `square`, `snake` and `bean` in 10 of 10 runs, one-track training in 3, 2
+and 2. Two tracks, `triangle` and `horseshoe`, were almost never passed by anyone, including the
+built-in pretrained brain. Every brain crashes at the same place: the sharpest corner, entered at
+full speed. Experiment 3 investigates why.
+
+**Limitations.** Rotating training sees more tracks *and* more varied corners; this experiment
+cannot tell which of the two matters. The test tracks are hand-designed.
+
+**In one sentence:** varied training tracks are what make a brain drive tracks it has never seen.
+
+## 5. Experiment 3: is it the sharp corners?
+
+**Why it matters.** Experiment 2 ended with an explanation that was only an observation: the two
+failed tracks have corners sharper than anything in training. An explanation becomes knowledge
+only when it predicts the result of a new test.
+
+**Measuring corners.** For every point on a track, the change of direction over the next and
+previous ≈ 240 units of road (±24 centre points) is measured; a track's hardest corner is the
+largest such turn, in radians, right turns positive. The training presets turn at most 1.67 right
+and −1.38 left. The failed tracks turn **1.76** (triangle, right) and **−2.17** (horseshoe, left);
+the passed tracks stay within 1.25 and −1.22.
+
+**Hypothesis.** If a brain fails because it has never met corners that sharp, adding one training
+track with such corners will let it pass the triangle and the horseshoe, and adding a track
+without them will not.
+
+**Design.** Both conditions train on **four** tracks in rotation: the three presets plus one new
+track, so the number of tracks is equal. *Mild*: the fourth track's corners stay inside the
+presets' range (1.12 / −0.37). *Sharp*: the fourth track's hardest corners match the failed test
+tracks (1.73 / −2.18; the track validator allows nothing sharper). Same five unseen tracks, 60
+generations, seeds 1–10.
+
+**Results.**
+
+![Experiment 3: laps on five unseen tracks with a mild or a sharp fourth training track](experiments/generalization-corners.svg)
+
+| Fourth training track | Laps per unseen track | Tracks finished (of 5) | `triangle` finished | `horseshoe` finished |
+|---|---|---|---|---|
+| Mild corners | 1.80 ± 0.00 | 3.0 ± 0.0 | 0 / 10 | 0 / 10 |
+| Sharp corners | 2.54 ± 0.68 | 4.2 ± 1.2 | 8 / 10 | 6 / 10 |
+
+Difference in laps per unseen track: −0.74, **p = 0.002**, Cliff's δ = −0.80 (large).
+
+**Interpretation.** The prediction held. A mild fourth track changes nothing: the triangle and the
+horseshoe still fail in every run. A sharp one lets brains pass the triangle in 8 of 10 runs and
+the horseshoe in 6 of 10, while the three easier tracks are still finished in nearly every run.
+Because the number of tracks is the same in both conditions, this also resolves the limitation of
+Experiment 2: it is the variety of corners, not merely the number of tracks, that drives
+generalization.
+
+**Limitations.** One run of the sharp condition (seed 4) never found a brain that drives all four
+of its own training tracks and did poorly on the test tracks too: sharp corners make training
+harder, which is why the spread is larger. The sharp track was designed to match the failed
+corners, so the result shows that such corners must be seen in training, not that any sharp track
+would do.
+
+**In one sentence:** a brain slows down for a corner only if it has met corners that sharp before.
+
+## 6. Experiment 4: how many sensors?
+
+**Why it matters.** Sensors are a cost in real vehicles, and for a neural network each extra input
+adds weights that evolution must tune. More information could help, or it could just enlarge the
+search.
+
+**Hypotheses.** (a) Learning is slower with too few sensors. (b) More sensors generalize better,
+since the car sees its surroundings in more detail.
+
+**Design.** 3, 5, 7 (default) or 9 rays, always spread over the same ±67.5° fan, so more rays means
+denser coverage, not a wider view. Part 4a measures learning speed on `technical` (50 generations,
+as in Experiment 1). Part 4b repeats Experiment 2's rotating training (60 generations) and tests
+the champions on the five unseen tracks.
+
+**Results.**
+
+![Experiment 4a: best fitness per generation for 3, 5, 7 and 9 rays](experiments/ray-count.svg)
+
+| Rays | Generations to the first lap | Runs without a lap | Best lap (s) |
+|---|---|---|---|
+| 3 | 26.9 ± 9.8 | **3 / 10** | 12.28 ± 1.24 |
+| 5 | 8.4 ± 3.0 | 0 / 10 | 9.00 ± 0.04 |
+| 7 | 8.4 ± 4.2 | 0 / 10 | 8.74 ± 0.03 |
+| 9 | 7.5 ± 4.5 | 0 / 10 | 8.71 ± 0.05 |
+
+3 rays vs any other count: **p < 0.001** (Holm), δ between +0.94 and +1.00. Between 5, 7 and 9
+rays: p = 1.000, δ ≤ 0.10.
+
+![Experiment 4b: laps on five unseen tracks for 3, 5, 7 and 9 rays](experiments/ray-count-generalization.svg)
+
+| Rays | Laps per unseen track | Tracks finished (of 5) | Laps on training tracks | `snake` finished |
+|---|---|---|---|---|
+| 3 | 1.18 ± 1.12 | 1.4 ± 1.9 | 1.83 ± 0.76 | 3 / 10 |
+| 5 | 1.80 ± 0.00 | 3.0 ± 0.0 | 3.00 ± 0.00 | 10 / 10 |
+| 7 | 1.86 ± 0.19 | 3.1 ± 0.3 | 3.00 ± 0.00 | 10 / 10 |
+| 9 | 1.36 ± 0.23 | 2.1 ± 0.3 | 3.00 ± 0.00 | 1 / 10 |
+
+9 vs 5 rays: −0.44 laps, **p < 0.001**, δ = −0.90; 9 vs 7 rays: −0.50 laps, **p < 0.001**,
+δ = −0.91. 3 rays vs 5 or 7: not significant after Holm (p = 0.297), because the 3-ray runs vary
+so much.
+
+**Interpretation.** Hypothesis (a) is clearly supported: three rays leave blind spots large enough
+that 3 of 10 runs never complete a lap, and the rest need three times as many generations. Five
+rays are enough; beyond that, learning speed does not change and the best lap improves only
+slightly (9.00 → 8.71 s). Hypothesis (b) is **contradicted**: 9-ray brains drive their own
+training tracks perfectly but generalize worse than 5- or 7-ray brains, almost entirely because
+they fail the `snake` track (1 of 10 runs finished, against 10 of 10). A plausible explanation,
+not tested here, is overfitting: 10 inputs give the network more weights with which to fit the
+specific shapes of the training tracks instead of a general driving rule.
+
+**Limitations.** The fan width was kept fixed, so "more rays" also means "rays closer together".
+The 3-ray runs that never lapped are left out of the learning-speed comparison, which makes 3 rays
+look better than they are; the difference is significant anyway.
+
+**In one sentence:** five sensors are enough, and more sensors can make generalization worse, not
+better.
+
+## 7. Experiment 5: noisy sensors
+
+**Why it matters.** Real sensors are never exact. A driving policy that collapses under slight
+measurement noise is useless outside the simulator. Training with noise is a common way to make
+policies robust.
+
+**Hypotheses.** (a) Performance falls as sensor noise grows. (b) Brains trained with noise are
+more robust than brains trained with exact sensors.
+
+**Design.** Noise is added to every sensor reading at every step: a uniform random value in ±*a*
+on the 0–1 scale, clamped back into 0–1. The noise has its own seeded generator, so runs remain
+reproducible and noise-free runs are bit-for-bit unchanged. Two conditions, both with rotating
+training for 60 generations: *exact* (no noise during training) and *noisy* (*a* = 0.1 during
+training). Every champion is then tested at *a* = 0, 0.05, 0.1 and 0.2 on its training tracks
+(where every champion is perfect without noise, so any drop is caused by the noise) and on the
+five unseen tracks.
+
+**Results.**
+
+![Experiment 5: laps on the training tracks at each test noise level](experiments/sensor-noise.svg)
+
+| Test noise | Exact training | Noisy training (±0.1) |
+|---|---|---|
+| ±0 | 3.00 ± 0.00 (30 / 30 finished) | 3.00 ± 0.00 (30 / 30) |
+| ±0.05 | 2.90 ± 0.22 (28 / 30) | 2.93 ± 0.21 (29 / 30) |
+| ±0.1 | 2.80 ± 0.32 (27 / 30) | 3.00 ± 0.00 (30 / 30) |
+| ±0.2 | 2.47 ± 0.57 (23 / 30) | 2.60 ± 0.41 (24 / 30) |
+
+*Laps per training track; "finished" counts drives over all runs and all three training tracks.*
+
+| Comparison | Difference | p | p (Holm) | δ |
+|---|---|---|---|---|
+| Exact training, ±0 vs ±0.2 (paired) | +0.53 | 0.031 | 0.188 | +0.60 (large) |
+| Noisy training, ±0 vs ±0.2 (paired) | +0.40 | 0.031 | 0.188 | +0.60 (large) |
+| ±0 vs ±0.05 or ±0.1 (paired, both trainings) | 0.00 to +0.20 | ≥ 0.25 | 1.000 | ≤ 0.30 |
+| Exact vs noisy training, at each noise level | −0.20 to 0.00 | ≥ 0.21 | ≥ 0.84 | ≤ 0.30 |
+
+On the unseen tracks both conditions behave alike at every level (1.64–1.86 laps per track).
+
+**Interpretation.** The brains are robust to moderate noise: at ±0.05 and ±0.1 the drop is small
+and not significant. At ±0.2, a fifth of the whole sensor range, performance falls in 6 of 10 runs
+in both conditions and rises in none (δ = +0.60); the uncorrected *p* is 0.031, but after
+correcting for the six comparisons it is 0.19, so with 10 runs the drop is a strong trend rather
+than a proven effect. Training with noise gave slightly better numbers at ±0.1 and ±0.2, but none
+of these differences approaches significance: hypothesis (b) is not supported at this sample
+size.
+
+**Limitations.** One training noise level (0.1) and one noise model (uniform, independent per
+sensor and step). Larger samples would be needed to detect the small benefits of noisy training,
+if they exist.
+
+**In one sentence:** the brains tolerate moderate sensor noise; at high noise they start to fail,
+and training with noise made no measurable difference.
+
+## 8. Discussion
+
+Taken together, the experiments describe what this kind of neuroevolution learns:
+
+- **Experience, not capacity, decides generalization.** Varied training tracks (Experiment 2) and
+  in particular varied corners (Experiment 3) produce brains that drive new tracks. Giving the
+  network more inputs (Experiment 4) did the opposite. This matches the central lesson of machine
+  learning: a model generalizes to what its training data covers, and extra capacity without
+  extra variety invites overfitting.
+- **The search is robust.** With elitism, the genetic algorithm tolerated mutation rates from 0.3
+  up to 0.8 without losing speed or final quality (Experiment 1), and the learned policies
+  tolerated moderate sensor noise (Experiment 5). The method is forgiving to tune.
+- **There are hard limits in the inputs.** Three rays are too few to learn the hardest preset
+  reliably (Experiment 4); somewhere between three and five, perception becomes sufficient.
+
+## 9. Threats to validity
+
+- **Sample size.** Ten runs per condition detect large effects reliably but can miss small ones.
+  Non-significant results should be read as "not shown", not as "no effect".
+- **Multiple experiments.** Holm correction is applied within each experiment's report, not across
+  all experiments together.
+- **Hand-designed tracks.** The unseen test tracks and the fourth training tracks were designed by
+  the author. They were not tuned to any condition, but a different set of shapes could change
+  the numbers.
+- **One architecture.** All experiments use one hidden layer of 6 neurons, a population of 100 and
+  60 (or 50) generations. Larger networks or longer training could behave differently.
+- **A simple world.** The physics is deliberately simple and deterministic. The results describe
+  learning in this simulator, not real vehicles.
+
+## 10. Reproducing the results
+
+Every experiment is defined by a file in `experiments/`, writes its raw data to
+`experiments/results/*.csv`, and regenerates its chart and full table in `docs/experiments/`. The
+same command always produces the same files.
+
+| Experiment | Command | Time |
+|---|---|---|
+| 1a. Mutation rate 0.05–0.3 | `npm run experiment -- experiments/mutation-rate.json` | ≈ 5 min |
+| 1b. Mutation rate 0.3–0.8 | `npm run experiment -- experiments/mutation-rate-high.json` | ≈ 5 min |
+| 2. Generalization | `npm run experiment -- experiments/generalization.json` | ≈ 4 min |
+| 3. Sharp corners | `npm run experiment -- experiments/generalization-corners.json` | ≈ 4 min |
+| 4a. Sensors, learning | `npm run experiment -- experiments/ray-count.json` | ≈ 5 min |
+| 4b. Sensors, generalization | `npm run experiment -- experiments/ray-count-generalization.json` | ≈ 10 min |
+| 5. Sensor noise | `npm run experiment -- experiments/sensor-noise.json` | ≈ 5 min |
+
+To redraw a chart and its table from an existing CSV without retraining:
+`npm run plot -- experiments/<name>.json`.
+
+The generated per-experiment tables (in Turkish, with every comparison) are in
+[`docs/experiments/`](experiments/).

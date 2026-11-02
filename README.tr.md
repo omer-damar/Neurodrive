@@ -16,14 +16,16 @@ Simülasyon 2D; 2D ya da 3D (Three.js) izlenebilir.
 
 ## Öne çıkan sonuçlar
 
-Koşul başına 10 sabit tohumla, ekransız ölçüldü (ortalama ± standart sapma). Aşağıdaki her sayı
-tek bir komutla yeniden üretilebilir ([Deneyler](#deneyler)).
+Beş kontrollü deney; her koşulda 10 sabit tohum ve kesin permütasyon testleri. Ayrıntılı anlatım
+**[deney raporunda](docs/REPORT.tr.md)**.
 
 | Soru | Bulgu |
 |---|---|
-| Arabalar ne kadar hızlı öğreniyor? | En zor presette en iyi araba ilk turunu **5,7–10,1 nesilde** tamamlıyor; mutasyon oranı ne olursa olsun aynı tur süresine (≈ 8,7 sn) ulaşıyor. |
-| Beyinler hiç görmedikleri pistleri sürebiliyor mu? | **Tek pistte** eğitim: 5 görülmemiş pistin 0,7'si bitirildi. **Üç pist dönüşümlü** eğitim: 5'in 3,1'i, her koşuda. |
-| Bazı pistlerde neden hâlâ başarısızlar? | Eğitimdeki her virajdan keskin görülmemiş virajlar. Eğitime **böyle virajları olan tek bir pist** eklemek, geçilemeyen iki pisti 0/10 koşudan **8/10 ve 6/10** koşuya çıkarıyor. |
+| Mutasyon oranı önemli mi? | 0,3'ün altındaki oranlar daha yavaş öğreniyor; 0,3'ten 0,8'e kadar hız ve son beceri artık değişmiyor. |
+| Beyinler hiç görmedikleri pistleri sürebiliyor mu? | **Üç pistte dönüşümlü** eğitim 5 görülmemiş pistin 3,1'ini bitiriyor, tek pist eğitimi 0,7'sini (p < 0,001). |
+| Bazılarında neden hâlâ başarısızlar? | Eğitimdeki her virajdan keskin görülmemiş virajlar. Böyle virajlı tek bir eğitim pisti, geçilemeyen iki pisti **0/10'dan 8/10 ve 6/10** koşuya çıkarıyor (p = 0,002). |
+| Kaç sensör gerekli? | 3 az, 5 yeterli; **9 ışın**, 5 ve 7'den **daha kötü genelleniyor** (p < 0,001). |
+| Beyinler gürültülü sensörlere ne kadar dayanıklı? | ±0,1 gürültüye kadar dayanıklı; ±0,2'de çoğu koşu tur kaybediyor. Gürültüyle eğitmek ölçülebilir bir fark yaratmadı. |
 
 ## Özellikler
 
@@ -38,6 +40,8 @@ tek bir komutla yeniden üretilebilir ([Deneyler](#deneyler)).
   hepsinde tur atan gömülü hazır beyinle başla.
 - **Sen vs YZ.** Hazır beyinle ya da eğitimin şampiyonuyla ok tuşları veya WASD ile yarış
   (telefonda dokunmatik düğmeler), altı araba modelinden birini seç, her pistteki rekorunu kovala.
+- **Deneyler.** İstatistiksel olarak sınanmış beş kontrollü deney ve ayrıntılı bir
+  [rapor](docs/REPORT.tr.md).
 - **Türkçe ve İngilizce** arayüz.
 
 ![Eğitilmiş araba sürüsü içinde lideri izleyen 3D takip kamerası](docs/media/screenshot-3d.png)
@@ -71,74 +75,31 @@ Node'da da aynı koşuyu verir.
 
 ## Deneyler
 
-**Tüm deneylerde ortak yöntem.** Eğitim Node'da ekransız çalışır. Yalnızca incelenen değişken
-değişir, geri kalan her şey varsayılanında kalır. Her koşul 1–10 tohumlarıyla çalışır; sonuçlar
-ortalama ± örneklem standart sapması olarak verilir. Tanımlar (`experiments/*.json`) ve ham CSV'ler
-repoda; aynı komut aynı CSV'yi, grafiği ve tabloyu yeniden üretir.
+Deneyler "arabalar öğreniyor" iddiasını ölçülmüş, tekrar üretilebilir iddialara dönüştürüyor. Her
+deney Node'da ekransız eğitilir, her koşulda 1–10 tohumlarını kullanır, yalnızca tek bir değişkeni
+değiştirir, ortalama ± standart sapma verir ve her karşılaştırmayı kesin bir permütasyon testiyle
+sınar (Holm düzeltmeli, etki büyüklüğü olarak Cliff's δ ile). Tanımlar ve ham CSV'ler repoda; tek
+bir komut her grafiği ve tabloyu yeniden üretir.
 
-### 1. Mutasyon oranı öğrenme hızını değiştiriyor mu?
+**[Ayrıntılı deney raporunu oku →](docs/REPORT.tr.md)** Rapor, yöntemi ve istatistikleri sade bir
+dille açıklıyor; her deney için neden önemli olduğunu, hipotezi, tasarımı, sonuçları, yorumu ve
+sınırlılıkları veriyor.
 
-**Kurulum.** `technical` pisti (en zor preset), nüfus 100, 50 nesil, mutasyon oranı
-∈ {0,05, 0,1, 0,3}.
+| # | Deney | Tek cümlelik sonuç |
+|---|---|---|
+| 1 | Mutasyon oranı (0,05 → 0,8) | En az orta düzeyde (≥ 0,3) mutasyon kullan; elitizm varken fazlası bir şey kaybettirmiyor. |
+| 2 | Beş görülmemiş piste genelleme | Bir beynin hiç görmediği pistleri sürebilmesini sağlayan şey çeşitli eğitim pistleri. |
+| 3 | Eğitimde keskin virajlar | Bir beyin bir viraj için ancak daha önce o keskinlikte virajlarla karşılaştıysa yavaşlıyor. |
+| 4 | Sensör sayısı (3 / 5 / 7 / 9) | Beş sensör yetiyor; fazlası genellemeyi iyileştirmek yerine kötüleştirebilir. |
+| 5 | Gürültülü sensörler (±0 → ±0,2) | Beyinler orta düzey gürültüyü kaldırıyor; gürültüyle eğitmek ölçülebilir bir fark yaratmadı. |
 
-![Üç mutasyon oranı için nesil başına en iyi fitness, ortalama ± 1 sd](docs/experiments/mutation-rate.svg)
-
-| Mutasyon oranı | İlk tura kadar nesil | Hiç tur atamayan koşu | En iyi tur (sn) |
-|---|---|---|---|
-| 0,05 | 10,1 ± 4,6 | 0 / 10 | 8,75 ± 0,03 |
-| 0,1 | 8,4 ± 4,2 | 0 / 10 | 8,74 ± 0,03 |
-| 0,3 | 5,7 ± 2,2 | 0 / 10 | 8,73 ± 0,02 |
-
-**Çıkarım.** Bu aralıkta en yüksek oran en hızlı öğrendi; beklenen "orta oran en iyisi" görülmedi.
-Son performans tüm koşullarda aynı.
-**Sınırlılıklar.** Tek pist ve üç değer; mutasyonun zarar vermeye başladığı eşiği bulmak için daha
-yüksek oranlar (0,5, 0,8) denenmeli.
-
-### 2. Beyinler hiç görmedikleri pistleri sürebiliyor mu?
-
-**Kurulum.** Aynı bütçeyle iki koşul (60 nesil, nüfus 100): tek pistte (`classic`) ya da üç presette
-dönüşümlü (pist her nesil değişir) eğitim. Her koşunun şampiyonu yalnızca kendi eğitim pistlerinde
-seçilir, sonra **hiçbir koşulda eğitimde olmayan beş yeni pisti** öğrenmeden birer kez sürer.
+İki merkezî sonuç: dönüşümlü eğitim tek pistte eğitimden çok daha iyi genelleniyor ve hâlâ
+geçemediği pistler, eğitim pistlerinden biri o keskinlikte virajlar içerince geçilebilir hale
+geliyor.
 
 ![Beş görülmemiş pistte atılan tur, tek pist ve dönüşümlü eğitim, ortalama ± 1 sd](docs/experiments/generalization.svg)
 
-| Eğitim | Görülmemiş pist başına tur (3 üzerinden) | Bitirilen görülmemiş pist (5 üzerinden) | Eğitim pistlerinde tur |
-|---|---|---|---|
-| Tek pist (`classic`) | 0,44 ± 0,67 | 0,7 ± 1,1 | 3,00 ± 0,00 |
-| Dönüşümlü (oval, classic, technical) | 1,86 ± 0,19 | 3,1 ± 0,3 | 3,00 ± 0,00 |
-
-**Çıkarım.** İki koşul da kendi pistlerini tam sürüyor, ama dönüşümlü eğitim çok daha iyi ve çok daha
-tutarlı genelleniyor: `square`, `snake` ve `bean`'i 10 koşunun 10'unda bitirdi (tek pist eğitimi: 3,
-2 ve 2). `triangle` ve `horseshoe`'yu hazır beyin dahil neredeyse hiçbir beyin geçemedi. Hepsi aynı
-yerde çarpıyor: pistin tam hızla girilen en keskin virajında. Bu virajlar eğitim pistlerindeki her
-virajdan keskin (≈ 480 birimlik yayda 1,76 ve −2,17 rad; eğitimde en fazla 1,67 ve −1,38).
-**Sınırlılıklar.** Test pistleri elle tasarlandı (yalnızca geçerli ve sürülebilir oldukları kontrol
-edildi, koşullara göre ayarlanmadı). Dönüşümlü eğitim hem daha çok pist hem daha çeşitli viraj
-görüyor; bu deney tek başına hangisinin etkili olduğunu söyleyemez. Deney 2b ikisini ayırıyor.
-
-### 2b. Sebep keskin virajlar mı?
-
-**Kurulum.** İki koşul da **dört** pisti dönüşümlü kullanıyor: üç preset ve bir yeni pist. Pist
-sayısı aynı; yalnızca dördüncü pistin virajları farklı. *Yumuşak* koşul, virajları presetlerin
-aralığında kalan bir pist ekliyor. *Keskin* koşul, en zor virajları geçilemeyen iki test pistiyle
-eşleşen bir pist ekliyor (1,73 ve −2,18 rad; pist doğrulayıcı daha keskinine izin vermiyor). Aynı beş
-görülmemiş pist, 60 nesil.
-
 ![Dördüncü pist yumuşak ya da keskin virajlıyken beş görülmemiş pistte atılan tur, ortalama ± 1 sd](docs/experiments/generalization-corners.svg)
-
-| Dördüncü eğitim pisti | Görülmemiş pist başına tur (3 üzerinden) | Bitirilen görülmemiş pist (5 üzerinden) | `triangle` bitiren | `horseshoe` bitiren |
-|---|---|---|---|---|
-| Yumuşak virajlı | 1,80 ± 0,00 | 3,0 ± 0,0 | 0 / 10 | 0 / 10 |
-| Keskin virajlı | 2,54 ± 0,68 | 4,2 ± 1,2 | 8 / 10 | 6 / 10 |
-
-**Çıkarım.** Viraj açıklaması doğrulandı. Yumuşak bir dördüncü pist hiçbir şeyi değiştirmiyor;
-keskin bir pist ise üçgeni 10 koşunun 8'inde, at nalını 6'sında geçilir kılıyor, kolay pistler de
-hemen her koşuda bitirilmeye devam ediyor. Bir beyin, ancak eğitimde o keskinlikte virajlarla
-karşılaştıysa böyle bir viraj için yavaşlamayı öğreniyor.
-**Sınırlılıklar.** Keskin koşuldaki bir koşu (tohum 4), kendi dört eğitim pistinin hepsini süren bir
-beyin bulamadı ve test pistlerinde de kötüydü: keskin pist eğitimi zorlaştırıyor, saçılmanın büyük
-olması bundan. Keskin pist, geçilemeyen virajlara göre tasarlandı; sonuç "bu tür virajlar eğitimde
-görülmeli" der, "herhangi bir keskin pist yeter" demez.
 
 ## Mimari
 
@@ -193,18 +154,11 @@ Ekransız eğitim; şampiyon beyin `trained/` klasörüne JSON olarak yazılır 
 npm run train -- --track classic --generations 80 --seed 42
 ```
 
-Deneyleri yeniden üret (her biri yaklaşık 4–5 dakika):
-
-```bash
-npm run experiment -- experiments/mutation-rate.json
-```
+Bir deneyi yeniden üret (her biri 4–10 dakika; yedisinin listesi
+[raporda](docs/REPORT.tr.md#10-sonuçları-yeniden-üretmek)):
 
 ```bash
 npm run experiment -- experiments/generalization.json
-```
-
-```bash
-npm run experiment -- experiments/generalization-corners.json
 ```
 
 Hazır beyin şu komutla üretildi:

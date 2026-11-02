@@ -33,3 +33,13 @@ En keskin virajlar (≈ 480 birimlik yayda toplam yön değişimi, radyan; sağ 
 | `square` | test | 1.09 | -0.05 |
 | `snake` | test | 1.25 | -1.22 |
 | `bean` | test | 1.06 | -0.87 |
+
+## Anlamlılık
+
+Karşılaştırılan ölçüt: koşu başına görülmemiş pistlerdeki ortalama tur. Her koşu bir gözlem (koşul başına bir değer listesi).
+
+| Karşılaştırma | Ortalama farkı (A − B) | p | p (Holm) | Cliff's δ | Etki |
+|---|---|---|---|---|---|
+| Tek pist (classic) vs Dönüşümlü (oval, classic, technical) | −1.42 | < 0.001 | < 0.001 | −0.91 | büyük |
+
+Nasıl okunur: *p*, iki koşul aslında aynı olsaydı en az bu kadar büyük bir farkın yalnızca şansla görülme olasılığıdır (iki yönlü permütasyon testi; koşular arasındaki tüm olası yeniden etiketlemeler sayıldı, yani kesin). *p (Holm)*, aynı raporda birden çok karşılaştırma yapıldığı için düzeltilmiş değerdir; 0.05'in altı geleneksel olarak anlamlı sayılır. *Cliff's δ*, A'dan rastgele bir koşunun B'den rastgele bir koşudan büyük olma olasılığı eksi küçük olma olasılığıdır (−1…+1); |δ| ≥ 0.474 büyük etki sayılır.

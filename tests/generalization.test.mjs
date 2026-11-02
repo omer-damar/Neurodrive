@@ -144,3 +144,17 @@ test('sharpestTurns: the oval only turns one way; the sharp training track match
   assert.ok(mild.right <= Math.max(...presets.map((p) => p.right)));
   assert.ok(mild.left >= Math.min(...presets.map((p) => p.left)));
 });
+
+test('a condition may change simulation settings, and unknown settings are rejected', () => {
+  const def = parseGeneralization({
+    ...TINY,
+    seeds: [1],
+    conditions: [{ name: 'few-rays', tracks: ['oval'], config: { rayCount: 3 } }],
+  });
+  const rows = runGeneralization(def, def.conditions[0], 1);
+  assert.equal(rows.length, 1 + 2);
+  assert.throws(() => parseGeneralization({ ...TINY, conditions: [{ name: 'x', tracks: ['oval'], config: { wings: 2 } }] }),
+    /Unknown condition setting "wings"/);
+  const shipped = parseGeneralization(JSON.parse(readFileSync('experiments/ray-count-generalization.json', 'utf8')));
+  assert.deepEqual(shipped.conditions.map((c) => c.config.rayCount), [3, 5, 7, 9]);
+});

@@ -6,7 +6,7 @@
 import { driveBrain } from '../../src/core/simulation.js';
 import { Track, PRESETS } from '../../src/core/track.js';
 import { trainOnTracks } from './training.mjs';
-import { meanSd, groupBy } from './experiment.mjs';
+import { meanSd, groupBy, VARIABLES } from './experiment.mjs';
 
 export const GENERALIZATION_COLUMNS = Object.freeze([
   'experiment',
@@ -21,11 +21,21 @@ export const GENERALIZATION_COLUMNS = Object.freeze([
   'bestLapSteps',
 ]);
 export const GENERALIZATION_STRINGS = new Set(['experiment', 'condition', 'split', 'track']);
+
+/** CSV columns of a definition: noise experiments add the test noise level after the track. */
+export function generalizationColumns(def) {
+  if (!def.testNoise) return GENERALIZATION_COLUMNS;
+  const columns = [...GENERALIZATION_COLUMNS];
+  columns.splice(columns.indexOf('track') + 1, 0, 'testNoise');
+  return columns;
+}
 export const CORNER_WINDOW = 24; // centre points each side for sharpestTurns()
 
 /**
  * Validates a generalization definition (experiments/*.json with "type": "generalization").
- * Training tracks are presets or names from `trainingTracks` (control points in the file).
+ * Training tracks are presets or names from `trainingTracks` (control points in the file). A
+ * condition may also change simulation settings (`config`, e.g. { rayCount: 3 }); the champion
+ * keeps its own sensors when it drives the test tracks.
  * @returns {{ type: string, name: string, title: string, generations: number, population: number,
  *             seeds: number[], conditions: { name: string, label: string, tracks: string[] }[],
  *             trainingTracks: Record<string, number[][]>, testTracks: Record<string, number[][]> }}
@@ -42,11 +52,15 @@ export function parseGeneralization(json) {
   for (const c of def.conditions) {
     if (!c.name || !Array.isArray(c.tracks) || c.tracks.length === 0) throw new Error('A condition needs a name and tracks');
     for (const t of c.tracks) if (!PRESETS[t] && !def.trainingTracks[t]) throw new Error(`Unknown training track "${t}"`);
+    c.config ??= {};
+    for (const key of Object.keys(c.config)) if (!VARIABLES[key]) throw new Error(`Unknown condition setting "${key}"`);
     c.label ??= c.name;
   }
   for (const name of Object.keys(def.testTracks)) {
     if (PRESETS[name] || def.trainingTracks[name]) throw new Error(`Test track "${name}" must not be a training track`);
   }
+  def.testNoise ??= null; // optional list of sensor noise levels the champions are tested at
+  if (def.testNoise && !def.testNoise.every((n) => n >= 0 && n < 1)) throw new Error('testNoise levels must be in [0, 1)');
   return def;
 }
 
@@ -96,10 +110,13 @@ export function sharpestTurns(track, window = CORNER_WINDOW) {
 /** Trains one (condition, seed) run and drives its champion on every track: one row per track. */
 export function runGeneralization(def, condition, seed, testTracks = buildTestTracks(def)) {
   const training = condition.tracks.map((name) => trainingTrack(def, name));
-  const config = { seed, populationSize: def.population };
+  const config = { seed, populationSize: def.population, ...condition.config };
   const { champion } = trainOnTracks(training, config, def.generations);
-  const drive = (split, name, track) => {
-    const result = driveBrain(champion.brain, track);
+  const levels = def.testNoise ?? [0];
+  let drives = 0; // gives every noisy drive its own, reproducible noise seed
+  const drive = (split, name, track, testNoise) => {
+    const noiseSeed = seed * 1000 + drives++;
+    const result = driveBrain(champion.brain, track, { sensorNoise: testNoise, noiseSeed });
     const laps = result.lapSteps.map((end, k) => end - (k === 0 ? 0 : result.lapSteps[k - 1]));
     return {
       experiment: def.name,
@@ -108,16 +125,17 @@ export function runGeneralization(def, condition, seed, testTracks = buildTestTr
       chosenGeneration: champion.generation,
       split,
       track: name,
+      ...(def.testNoise ? { testNoise } : {}),
       laps: result.laps,
       finished: result.finished ? 1 : 0,
       steps: result.steps,
       bestLapSteps: laps.length ? Math.min(...laps) : null,
     };
   };
-  return [
-    ...condition.tracks.map((name, i) => drive('train', name, training[i])),
-    ...[...testTracks].map(([name, track]) => drive('test', name, track)),
-  ];
+  return levels.flatMap((level) => [
+    ...condition.tracks.map((name, i) => drive('train', name, training[i], level)),
+    ...[...testTracks].map(([name, track]) => drive('test', name, track, level)),
+  ]);
 }
 
 /**
@@ -148,6 +166,32 @@ export function summarizeGeneralization(rows, def) {
           finished: trackRows.filter((r) => r.finished).length,
           runs: trackRows.length,
         };
+      }),
+    };
+  });
+}
+
+/**
+ * Noise experiments: per condition and test noise level, the per-run mean laps on the training
+ * tracks and on the unseen tracks (mean ± sd over runs), and how many drives finished.
+ */
+export function summarizeNoise(rows, def) {
+  const mean = (values) => values.reduce((a, b) => a + b, 0) / values.length;
+  return def.conditions.map((condition) => {
+    const conditionRows = rows.filter((r) => r.condition === condition.name);
+    const runs = [...groupBy(conditionRows, (r) => r.seed).values()];
+    return {
+      condition: condition.name,
+      label: condition.label,
+      runs: runs.length,
+      levels: def.testNoise.map((level) => {
+        const at = (run, split) => run.filter((r) => r.testNoise === level && r.split === split);
+        const split = (name) => ({
+          laps: meanSd(runs.map((run) => mean(at(run, name).map((r) => r.laps)))),
+          finished: runs.reduce((n, run) => n + at(run, name).filter((r) => r.finished).length, 0),
+          drives: runs.reduce((n, run) => n + at(run, name).length, 0),
+        });
+        return { level, train: split('train'), test: split('test') };
       }),
     };
   });

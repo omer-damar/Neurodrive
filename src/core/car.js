@@ -14,6 +14,7 @@ import {
   RAY_COUNT,
   RAY_RANGE,
   RAY_SPREAD,
+  SENSOR_NOISE,
 } from './config.js';
 import { clamp, segmentIntersectT, wrapDelta } from './math.js';
 
@@ -23,9 +24,12 @@ export class Car {
   /**
    * @param {import('./track.js').Track} track
    * @param {{ stuckSteps?: number, reverseTolerance?: number, laps?: number,
-   *           rayCount?: number, rayRange?: number, raySpread?: number, laneOffset?: number }} [options]
+   *           rayCount?: number, rayRange?: number, raySpread?: number, laneOffset?: number,
+   *           sensorNoise?: number, noiseRng?: () => number }} [options]
    *   Manual driving passes stuckSteps: Infinity so a human can stand still. laneOffset starts the
    *   car this far right (negative: left) of the centre line, so two racers do not overlap.
+   *   sensorNoise adds uniform noise in ±sensorNoise to every reading (clamped to 0..1), drawn from
+   *   the seeded noiseRng; the drawn rays stay exact.
    */
   constructor(track, options = {}) {
     this.laneOffset = options.laneOffset ?? 0;
@@ -35,6 +39,9 @@ export class Car {
     this.rayCount = options.rayCount ?? RAY_COUNT;
     this.rayRange = options.rayRange ?? RAY_RANGE;
     this.raySpread = options.raySpread ?? RAY_SPREAD;
+    this.sensorNoise = options.sensorNoise ?? SENSOR_NOISE;
+    this.noiseRng = options.noiseRng ?? null;
+    if (this.sensorNoise > 0 && !this.noiseRng) throw new Error('sensorNoise needs a seeded noiseRng');
     this.corners = new Float64Array(8); // body corners, FL FR RR RL; also read by renderers
     this.sensors = new Float64Array(this.rayCount); // 1 - distance / range: 0 = clear, 1 = touching
     this.rayEnds = new Float64Array(this.rayCount * 2); // hit point, or the ray tip when clear
@@ -94,8 +101,10 @@ export class Car {
         const t = segmentIntersectT(this.x, this.y, ex, ey, s[o], s[o + 1], s[o + 2], s[o + 3]);
         if (t >= 0 && t < nearest) nearest = t;
       }
-      this.sensors[r] = 1 - nearest;
-      this.inputs[r] = 1 - nearest;
+      let reading = 1 - nearest;
+      if (this.sensorNoise > 0) reading = clamp(reading + (this.noiseRng() * 2 - 1) * this.sensorNoise, 0, 1);
+      this.sensors[r] = reading;
+      this.inputs[r] = reading;
       this.rayEnds[r * 2] = this.x + (ex - this.x) * nearest;
       this.rayEnds[r * 2 + 1] = this.y + (ey - this.y) * nearest;
     }

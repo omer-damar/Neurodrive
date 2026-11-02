@@ -1,11 +1,13 @@
 // Dependency-free SVG charts (line chart, grouped bar chart) and Markdown reports for experiment summaries.
 // Static output (README image), so hover is limited to native <title> tooltips on markers.
 
-// Validated categorical slots 1-3 (light / dark surface); identity follows the condition order.
+// Validated categorical slots 1-4 (light / dark surface); identity follows the condition order.
+// Slots 3-4 sit below 3:1 on the light surface, so every series is also labelled in text.
 const SERIES = [
   { light: '#2a78d6', dark: '#3987e5' },
   { light: '#eb6834', dark: '#d95926' },
   { light: '#1baf7a', dark: '#199e70' },
+  { light: '#eda100', dark: '#c98500' },
 ];
 const MAX_SERIES = SERIES.length;
 const WIDTH = 760;
@@ -171,8 +173,9 @@ const THUMB = { width: 64, height: 40 }; // track outline under each group label
  * Generalization result: one group per test track plus an "all" group, one bar per condition
  * (mean laps, ±1 sd error bar), a small outline of each test track under its label.
  * @param {ReturnType<import('./generalization.mjs').summarizeGeneralization>} summary
- * @param {{ title: string, subtitle: string, yLabel: string, allLabel: string, maxLaps: number,
- *           thumbs: Record<string, ArrayLike<number>> }} text thumbs: flat [x, y, ...] centre lines
+ * @param {{ title: string, subtitle: string, yLabel: string, allLabel?: string | null, maxLaps: number,
+ *           thumbs?: Record<string, ArrayLike<number>> }} text thumbs: flat [x, y, ...] centre lines;
+ *   without allLabel there is no "all" group (the noise experiment groups by noise level instead)
  */
 export function generalizationChartSVG(summary, text) {
   if (summary.length > MAX_SERIES) throw new Error(`At most ${MAX_SERIES} conditions per chart`);
@@ -182,7 +185,7 @@ export function generalizationChartSVG(summary, text) {
   const tracks = summary[0].perTrack.map((p) => p.track);
   const groups = [
     ...tracks.map((track, g) => ({ key: track, label: track, stats: summary.map((s) => s.perTrack[g]) })),
-    { key: null, label: text.allLabel, stats: summary.map((s) => ({ laps: s.testLaps, finished: null })) },
+    ...(text.allLabel ? [{ key: null, label: text.allLabel, stats: summary.map((s) => ({ laps: s.testLaps, finished: null })) }] : []),
   ];
   const groupW = plotW / groups.length;
   const barW = (groupW * 0.62 - BAR.gap * (summary.length - 1)) / summary.length;
@@ -232,7 +235,7 @@ export function generalizationChartSVG(summary, text) {
     });
     const cx = pad.left + groupW * (g + 0.5);
     parts.push(`<text class="label" x="${r(cx)}" y="${base + 18}" text-anchor="middle">${esc(group.label)}</text>`);
-    const outline = group.key === null ? null : text.thumbs[group.key];
+    const outline = group.key === null ? null : text.thumbs?.[group.key];
     if (outline) parts.push(`<polygon class="thumb" points="${thumbPoints(outline, cx - THUMB.width / 2, base + 30)}"/>`);
   });
   parts.push('</svg>');
@@ -301,4 +304,80 @@ export function generalizationMarkdown(def, summary, corners = []) {
     );
   }
   return lines.join('\n');
+}
+
+/** Markdown report for a noise experiment: laps per noise level on training and unseen tracks. */
+export function noiseMarkdown(def, summary) {
+  const lines = [
+    `# ${def.title}`,
+    '',
+    `- Eğitim: ${def.generations} nesil, nüfus ${def.population}, pistler dönüşümlü`,
+    ...def.conditions.map((c) => `- Koşul \`${c.name}\`: ${c.label}`),
+    `- Test: şampiyon her pisti her gürültü seviyesinde öğrenmeden bir kez sürer; seviyeler ±${def.testNoise.join(', ±')} (okuma 0–1 ölçeğinde, eşit dağılımlı)`,
+    `- Tohumlar: ${def.seeds.join(', ')} (koşul başına ${def.seeds.length} koşu); değerler ortalama ± standart sapma (örneklem)`,
+    '',
+    `| Test gürültüsü | ${summary.map((s) => `${s.label}: eğitim pistleri`).join(' | ')} | ${summary.map((s) => `${s.label}: görülmemiş pistler`).join(' | ')} |`,
+    `|---|${summary.map(() => '---').join('|')}|${summary.map(() => '---').join('|')}|`,
+    ...def.testNoise.map((level, k) => {
+      const cell = (x) => `${ms(x.laps, 2)} tur (${x.finished}/${x.drives} bitti)`;
+      return `| ±${level} | ${summary.map((s) => cell(s.levels[k].train)).join(' | ')} | ${summary.map((s) => cell(s.levels[k].test)).join(' | ')} |`;
+    }),
+    '',
+  ];
+  return lines.join('\n');
+}
+
+/**
+ * "Significance" section for a report: one row per comparison.
+ * @param {{ a: string, b: string, diff: number, p: number, pHolm: number, exact: boolean,
+ *           delta: number, size: string }[]} pairs
+ * @param {string} metric what was compared, in words
+ * @param {number} digits decimals for the difference
+ * @param {{ heading?: string, paired?: boolean }} [options] paired: the same runs measured twice
+ */
+export function significanceMarkdown(pairs, metric, digits = 2, { heading = 'Anlamlılık', paired = false } = {}) {
+  const sizeTr = { negligible: 'ihmal edilebilir', small: 'küçük', medium: 'orta', large: 'büyük' };
+  if (paired) return pairedMarkdown(pairs, metric, digits, heading, sizeTr);
+  return [
+    `## ${heading}`,
+    '',
+    `Karşılaştırılan ölçüt: ${metric}. Her koşu bir gözlem (koşul başına bir değer listesi).`,
+    '',
+    '| Karşılaştırma | Ortalama farkı (A − B) | p | p (Holm) | Cliff\'s δ | Etki |',
+    '|---|---|---|---|---|---|',
+    ...pairs.map((x) =>
+      `| ${x.a} vs ${x.b} | ${x.diff >= 0 ? '+' : '−'}${Math.abs(x.diff).toFixed(digits)} | ${formatP(x.p)} | ${formatP(x.pHolm)} | ` +
+        `${x.delta >= 0 ? '+' : '−'}${Math.abs(x.delta).toFixed(2)} | ${sizeTr[x.size]} |`),
+    '',
+    'Nasıl okunur: *p*, iki koşul aslında aynı olsaydı en az bu kadar büyük bir farkın yalnızca şansla ' +
+      'görülme olasılığıdır (iki yönlü permütasyon testi; ' +
+      (pairs.every((x) => x.exact) ? 'koşular arasındaki tüm olası yeniden etiketlemeler sayıldı, yani kesin' : 'tohumlu Monte Carlo tahmini') +
+      '). *p (Holm)*, aynı raporda birden çok karşılaştırma yapıldığı için düzeltilmiş değerdir; ' +
+      '0.05\'in altı geleneksel olarak anlamlı sayılır. *Cliff\'s δ*, A\'dan rastgele bir koşunun B\'den rastgele bir ' +
+      'koşudan büyük olma olasılığı eksi küçük olma olasılığıdır (−1…+1); |δ| ≥ 0.474 büyük etki sayılır.',
+    '',
+  ].join('\n');
+}
+
+function pairedMarkdown(pairs, metric, digits, heading, sizeTr) {
+  return [
+    `## ${heading}`,
+    '',
+    `Karşılaştırılan ölçüt: ${metric}. Aynı koşular iki kez ölçüldü (eşli veri).`,
+    '',
+    '| Karşılaştırma | Ortalama farkı (A − B) | p | p (Holm) | Eşli δ | Etki |',
+    '|---|---|---|---|---|---|',
+    ...pairs.map((x) =>
+      `| ${x.a} vs ${x.b} | ${x.diff >= 0 ? '+' : '−'}${Math.abs(x.diff).toFixed(digits)} | ${formatP(x.p)} | ${formatP(x.pHolm)} | ` +
+        `${x.delta >= 0 ? '+' : '−'}${Math.abs(x.delta).toFixed(2)} | ${sizeTr[x.size]} |`),
+    '',
+    'Nasıl okunur: *p*, eşli işaret çevirme permütasyon testinden gelir: etki yoksa her koşunun farkı eşit ' +
+      'olasılıkla artı ya da eksidir, tüm işaret düzenleri sayıldı. *p (Holm)* bu tablodaki karşılaştırmalar için ' +
+      'düzeltilmiştir. *Eşli δ*, A\'nın B\'den büyük olduğu koşuların oranı eksi küçük olduğu koşuların oranıdır (−1…+1).',
+    '',
+  ].join('\n');
+}
+
+function formatP(p) {
+  return p < 0.001 ? '< 0.001' : p.toFixed(3);
 }

@@ -22,6 +22,7 @@ export const VARIABLES = Object.freeze({
   populationSize: 'populationSize',
   hiddenNeurons: 'hiddenNeurons',
   rayCount: 'rayCount',
+  sensorNoise: 'sensorNoise',
 });
 
 /**

@@ -8,7 +8,7 @@ import {
   parseGeneralization,
   buildTestTracks,
   runGeneralization,
-  GENERALIZATION_COLUMNS,
+  generalizationColumns,
 } from './lib/generalization.mjs';
 import { plot, plotGeneralization, resultPaths } from './plot.mjs';
 
@@ -41,9 +41,9 @@ if (json.type === 'generalization') {
   const jobs = def.conditions.flatMap((condition) =>
     def.seeds.map((seed) => ({ label: `${condition.name} seed=${seed}`, run: () => runGeneralization(def, condition, seed, testTracks) })));
   console.log(`${def.name}: ${def.conditions.map((c) => c.name).join(' vs ')} × ${def.seeds.length} seeds, tested on ${testTracks.size} unseen tracks = ${jobs.length} runs`);
-  const rows = runAll(jobs, (r) => `test laps ${r.filter((x) => x.split === 'test').map((x) => x.laps).join(' ')}`);
+  const rows = runAll(jobs, (r) => `test laps ${r.filter((x) => x.split === 'test' && !x.testNoise).map((x) => x.laps).join(' ')}`);
   paths = resultPaths(def);
-  writeFileSync(paths.csv, toCSV(rows, GENERALIZATION_COLUMNS, new Set()));
+  writeFileSync(paths.csv, toCSV(rows, generalizationColumns(def), new Set()));
   plotGeneralization(def, rows);
 } else {
   def = parseDefinition(json);

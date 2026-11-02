@@ -15,6 +15,8 @@ import {
   DEFAULT_SEED,
   MAX_STEPS,
   LAPS,
+  SENSOR_NOISE,
+  NOISE_SEED_SALT,
 } from './config.js';
 import { mulberry32 } from './math.js';
 import { Car } from './car.js';
@@ -34,6 +36,7 @@ export const DEFAULT_SIM_CONFIG = Object.freeze({
   seed: DEFAULT_SEED,
   maxSteps: MAX_STEPS,
   laps: LAPS,
+  sensorNoise: SENSOR_NOISE,
 });
 
 /** Laps completed as a fraction, plus a bonus for finishing early. */
@@ -55,10 +58,12 @@ export function configForBrain(brain) {
 
 /**
  * Drives one car with a fixed brain (no learning) until it finishes, dies or runs out of time.
- * Used to check how well a saved or pretrained brain generalizes to a track.
+ * Used to check how well a saved or pretrained brain generalizes to a track. With sensorNoise the
+ * readings are noisy, drawn from mulberry32(noiseSeed), so the same seed gives the same drive.
  */
-export function driveBrain(brain, track, { maxSteps = MAX_STEPS, laps = LAPS } = {}) {
-  const car = new Car(track, { ...brain.sensor, laps });
+export function driveBrain(brain, track, { maxSteps = MAX_STEPS, laps = LAPS, sensorNoise = 0, noiseSeed = 0 } = {}) {
+  const noise = sensorNoise > 0 ? { sensorNoise, noiseRng: mulberry32(noiseSeed) } : {};
+  const car = new Car(track, { ...brain.sensor, laps, ...noise });
   let steps = 0;
   while (car.alive && !car.finished && steps < maxSteps) {
     car.sense();
@@ -97,7 +102,9 @@ export class Simulation {
     this.sizes = [c.rayCount + 1, c.hiddenNeurons, OUTPUT_COUNT];
     this.sensor = { rayCount: c.rayCount, rayRange: c.rayRange, raySpread: c.raySpread };
     this.brains = Array.from({ length: c.populationSize }, () => new NeuralNetwork(this.sizes, this.rng, this.sensor));
-    this.cars = this.brains.map(() => new Car(track, { ...this.sensor, laps: c.laps }));
+    // Noise gets its own RNG so that exact-sensor runs consume the main RNG exactly as before.
+    const noise = c.sensorNoise > 0 ? { sensorNoise: c.sensorNoise, noiseRng: mulberry32((c.seed ^ NOISE_SEED_SALT) >>> 0) } : {};
+    this.cars = this.brains.map(() => new Car(track, { ...this.sensor, laps: c.laps, ...noise }));
     this.fitness = new Float64Array(c.populationSize);
     this.parents = this.brains.map(() => []);
     this.generation = 1;

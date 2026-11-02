@@ -42,6 +42,8 @@ export const CAR_WIDTH = 11;
 export const RAY_COUNT = 7;
 export const RAY_SPREAD = (135 * Math.PI) / 180; // total fan width, i.e. ±67.5°
 export const RAY_RANGE = 200;
+export const SENSOR_NOISE = 0; // each reading gets uniform noise in ±this (0..1 scale); 0 = exact sensors
+export const NOISE_SEED_SALT = 0x5eed; // noise uses its own RNG (seed ^ salt), so exact runs are unchanged
 
 // --- Termination and fitness (4.5) ---
 export const STUCK_STEPS = 150; // ~2.5 s without new progress
