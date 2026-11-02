@@ -56,18 +56,24 @@ export function runCondition(def, value, seed) {
   }));
 }
 
-/** Fixed column order and number formatting, so identical runs give byte-identical files. */
-export function toCSV(rows) {
-  const lines = [CSV_COLUMNS.join(',')];
+const FIXED_COLUMNS = new Set(['best', 'avg']); // floats written with 6 decimals
+const STRING_COLUMNS = new Set(['experiment', 'variable']);
+
+/**
+ * Fixed column order and number formatting, so identical runs give byte-identical files.
+ * @param {readonly string[]} [columns] column order (another experiment type passes its own)
+ * @param {Set<string>} [fixed] float columns written with 6 decimals
+ */
+export function toCSV(rows, columns = CSV_COLUMNS, fixed = FIXED_COLUMNS) {
+  const lines = [columns.join(',')];
   for (const row of rows) {
-    lines.push(CSV_COLUMNS.map((col) => formatCell(row[col], FIXED_COLUMNS.has(col))).join(','));
+    lines.push(columns.map((col) => formatCell(row[col], fixed.has(col))).join(','));
   }
   return lines.join('\n') + '\n';
 }
 
-const FIXED_COLUMNS = new Set(['best', 'avg']); // floats written with 6 decimals
-
-export function fromCSV(text) {
+/** @param {Set<string>} [strings] columns kept as text; every other cell is a number (empty = null) */
+export function fromCSV(text, strings = STRING_COLUMNS) {
   const [header, ...lines] = text.trim().split(/\r?\n/);
   const columns = header.split(',');
   return lines.map((line) => {
@@ -75,7 +81,7 @@ export function fromCSV(text) {
     const row = {};
     columns.forEach((col, i) => {
       const cell = cells[i];
-      row[col] = cell === '' ? null : col === 'experiment' || col === 'variable' ? cell : Number(cell);
+      row[col] = cell === '' ? null : strings.has(col) ? cell : Number(cell);
     });
     return row;
   });
@@ -135,7 +141,7 @@ export function meanSd(values) {
   return { mean, sd, n };
 }
 
-function groupBy(items, key) {
+export function groupBy(items, key) {
   const map = new Map();
   for (const item of items) {
     const k = key(item);

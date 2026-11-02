@@ -6,9 +6,10 @@ import { parseArgs } from 'node:util';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 
-import { Simulation, DEFAULT_SIM_CONFIG, driveBrain } from '../src/core/simulation.js';
+import { DEFAULT_SIM_CONFIG, driveBrain } from '../src/core/simulation.js';
 import { Track, PRESETS } from '../src/core/track.js';
-import { DEFAULT_TRACK, STEPS_PER_SECOND, TRACK_PRESETS, MAX_STEPS, ELITE_COUNT } from '../src/core/config.js';
+import { DEFAULT_TRACK, STEPS_PER_SECOND, TRACK_PRESETS } from '../src/core/config.js';
+import { trainOnTracks } from './lib/training.mjs';
 
 const PRETRAINED_PATH = 'src/core/pretrained.js';
 
@@ -43,45 +44,21 @@ const out = values.out ?? `trained/${label}-seed${config.seed}.json`;
 
 const tracks = trackNames.map((name) => Track.preset(name));
 const presets = TRACK_PRESETS.map((name) => Track.preset(name));
-const sim = new Simulation(tracks[0], config);
-let current = 0; // index of the track the running generation uses
-
-// The saved brain is the elite that drives every preset best on its own (laps on its worst track
-// first, then the total), not the highest single-track fitness: with rotating tracks that one is
-// usually an oval specialist.
-function generalizationScore(brain) {
-  let total = 0;
-  let worst = Infinity;
-  for (const track of presets) {
-    const result = driveBrain(brain, track);
-    total += result.laps + (result.finished ? 1 - result.steps / MAX_STEPS : 0);
-    worst = Math.min(worst, result.laps);
-  }
-  return worst * 100 + total;
-}
-let champion = { brain: null, score: -Infinity, generation: 0 };
 
 const started = Date.now();
 console.log(`tracks=${label} population=${config.populationSize} seed=${config.seed} mutationRate=${config.mutationRate}`);
 console.log('gen  track         best      avg  finished  bestLap');
-sim.onGeneration = (s) => {
-  const lap = s.bestLapSteps === null ? '-' : `${(s.bestLapSteps / STEPS_PER_SECOND).toFixed(2)}s`;
-  console.log(
-    `${String(s.generation).padStart(3)}  ${trackNames[current].padEnd(10)}  ${s.best.toFixed(3).padStart(7)}` +
-      `  ${s.avg.toFixed(3).padStart(7)}  ${String(s.finishedCount).padStart(8)}  ${lap.padStart(7)}`,
-  );
-  // The next generation's first brains are this generation's elites, unchanged.
-  for (let e = 0; e < ELITE_COUNT; e++) {
-    const score = generalizationScore(sim.brains[e]);
-    if (score > champion.score) champion = { brain: sim.brains[e].clone(), score, generation: s.generation };
-  }
-  // Rotation: the next generation runs on the next track (brains are kept).
-  if (tracks.length > 1) {
-    current = s.generation % tracks.length;
-    sim.setTrack(tracks[current]);
-  }
-};
-sim.runGenerations(generations);
+// The saved brain is the elite that drives every preset best on its own (see trainOnTracks).
+const { sim, champion } = trainOnTracks(tracks, config, generations, {
+  selectionTracks: presets,
+  onGeneration: (s, current) => {
+    const lap = s.bestLapSteps === null ? '-' : `${(s.bestLapSteps / STEPS_PER_SECOND).toFixed(2)}s`;
+    console.log(
+      `${String(s.generation).padStart(3)}  ${trackNames[current].padEnd(10)}  ${s.best.toFixed(3).padStart(7)}` +
+        `  ${s.avg.toFixed(3).padStart(7)}  ${String(s.finishedCount).padStart(8)}  ${lap.padStart(7)}`,
+    );
+  },
+});
 
 mkdirSync(dirname(out), { recursive: true });
 writeFileSync(out, JSON.stringify(champion.brain.toJSON(), null, 2) + '\n');

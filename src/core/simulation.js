@@ -69,6 +69,21 @@ export function driveBrain(brain, track, { maxSteps = MAX_STEPS, laps = LAPS } =
   return { laps: car.lap, finished: car.finished, steps, deathCause: car.deathCause, lapSteps: car.lapSteps.slice() };
 }
 
+/**
+ * How well one brain drives a set of tracks on its own: laps on its worst track first, then the
+ * total laps plus finish bonuses. Ranks brains for "drives every track" rather than for one track.
+ */
+export function scoreOnTracks(brain, tracks, { maxSteps = MAX_STEPS } = {}) {
+  let total = 0;
+  let worst = Infinity;
+  for (const track of tracks) {
+    const result = driveBrain(brain, track, { maxSteps });
+    total += result.laps + (result.finished ? 1 - result.steps / maxSteps : 0);
+    worst = Math.min(worst, result.laps);
+  }
+  return worst * 100 + total;
+}
+
 export class Simulation {
   /**
    * @param {import('./track.js').Track} track
